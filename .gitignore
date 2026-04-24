@@ -1,0 +1,51 @@
+# ============================================================================
+# .gitignore - CONECTASOCIOS (App React Native / Expo)
+# ============================================================================
+
+# 📦 Dependencias de Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 🚀 Builds y Caché de Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# 🔒 Variables de Entorno (¡CRÍTICO!)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.production.local
+
+# 🔑 Keystores y Certificados de App (¡CRÍTICO!)
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+*.pem
+
+# 🍎 iOS / Xcode (Si en el futuro expulsas la app)
+ios/build/
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+
+# 🤖 Android / Gradle (Ignorar builds locales)
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+
+# 💻 Archivos del Sistema Operativo e IDE
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
