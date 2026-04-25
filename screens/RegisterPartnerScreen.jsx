@@ -33,7 +33,9 @@ const RegisterPartnerScreen = () => {
         console.log('Cargando categorías desde:', `${API_URL}/api/categorias/`);
         const response = await axios.get(`${API_URL}/api/categorias/`);
         console.log('Categorías cargadas:', response.data);
-        setCategories(response.data);
+        
+        const catData = Array.isArray(response.data) ? response.data : (response.data.results || []);
+        setCategories(catData);
       } catch (error) {
         console.error("Error cargando categorías", error);
         console.error("Error response:", error.response?.data);

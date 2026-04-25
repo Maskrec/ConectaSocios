@@ -46,7 +46,9 @@ const MapScreen = () => {
       // 2. Obtener comercios (Hotspots)
       try {
         const response = await apiClient.get('/mapa-estrategico/');
-        setCommerces(response.data);
+        
+        const commercesData = Array.isArray(response.data) ? response.data : (response.data.results || []);
+        setCommerces(commercesData);
       } catch (error) {
         console.error("Error cargando mapa estratégico:", error);
       } finally {

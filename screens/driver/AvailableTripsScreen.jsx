@@ -262,6 +262,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 15,
     paddingVertical: 10,
+    paddingBottom: 90,
   },
   tripCard: {
     backgroundColor: '#fff',

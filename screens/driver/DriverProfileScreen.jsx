@@ -16,6 +16,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../../api';
 import { Ionicons } from '@expo/vector-icons';
 import Alert from '../../components/AlertPolyfill';
@@ -52,9 +53,13 @@ const DriverProfileScreen = ({ navigation }) => {
     average_rating: 0,
   });
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchStats();
+      // Refrescar los datos del usuario para mantener la deuda actualizada al momento
+      apiClient.get('/auth/perfil/').then(res => setUser(res.data)).catch(() => {});
+    }, [])
+  );
 
   const fetchStats = async () => {
     try {
@@ -424,7 +429,7 @@ const DriverProfileScreen = ({ navigation }) => {
             <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
           </TouchableOpacity>
 
-          <View style={{ height: 20 }} />
+          <View style={{ height: 90 }} />
         </ScrollView>
       )}
 

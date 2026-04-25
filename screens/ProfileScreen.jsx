@@ -47,6 +47,8 @@ const ProfileScreen = () => {
   // Estados Formulario Liquidación
   const [clearingDebt, setClearingDebt] = useState(false);
   const [debtConfirmation, setDebtConfirmation] = useState(false);
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
 
   // --- CARGA DE DATOS ---
@@ -101,13 +103,22 @@ const ProfileScreen = () => {
         Alert.alert("Todo en orden", "No tienes deuda pendiente con la oficina.");
         return;
     }
+    setAdminUsername('');
+    setAdminPassword('');
     setDebtConfirmation(true);
   };
 
   const submitClearDebt = async () => {
+    if (!adminUsername || !adminPassword) {
+        Alert.alert("Error", "El administrador debe ingresar sus credenciales.");
+        return;
+    }
     setClearingDebt(true);
     try {
-        const response = await apiClient.post('/liquidar-deuda/', {});
+        const response = await apiClient.post('/liquidar-deuda/', {
+            admin_username: adminUsername,
+            admin_password: adminPassword
+        });
         Alert.alert("¡Corte de Caja Exitoso!", response.data.message || "Tu deuda ha sido liquidada.");
         setDebtConfirmation(false);
         fetchProfileData();
@@ -312,9 +323,27 @@ const ProfileScreen = () => {
                          ¿Deseas liquidar tu deuda de <Text style={{fontWeight:'bold', color: DANGER_COLOR}}>${user.amount_to_deliver || '0.00'}</Text>? Esta acción requiere confirmación del administrador.
                      </Text>
 
-                     <Text style={{color: '#888', fontSize: 12, marginTop: 10, textAlign: 'center'}}>
-                         Recibirás una notificación cuando se procese tu solicitud.
+                     <Text style={{color: '#888', fontSize: 12, marginBottom: 15, textAlign: 'center'}}>
+                         El administrador de la oficina debe ingresar sus credenciales para autorizar este corte de caja.
                      </Text>
+
+                     <TextInput
+                         style={styles.input}
+                         placeholder="Usuario del Administrador"
+                         value={adminUsername}
+                         onChangeText={setAdminUsername}
+                         autoCapitalize="none"
+                         editable={!clearingDebt}
+                     />
+                     
+                     <TextInput
+                         style={styles.input}
+                         placeholder="Contraseña"
+                         value={adminPassword}
+                         onChangeText={setAdminPassword}
+                         secureTextEntry
+                         editable={!clearingDebt}
+                     />
 
                      <View style={styles.modalActions}>
                          <TouchableOpacity

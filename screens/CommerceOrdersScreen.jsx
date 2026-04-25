@@ -33,8 +33,12 @@ const CommerceOrdersScreen = () => {
         apiClient.get('/mis-pedidos-comercio/'), // Pedidos nuevos (pending)
         apiClient.get('/pedidos-en-preparacion/') // Aceptados/Cocinando (in_progress)
       ]);
-      setPendingOrders(pendingRes.data);
-      setInProgressOrders(progressRes.data);
+      
+      const pendingData = Array.isArray(pendingRes.data) ? pendingRes.data : (pendingRes.data.results || []);
+      const progressData = Array.isArray(progressRes.data) ? progressRes.data : (progressRes.data.results || []);
+      
+      setPendingOrders(pendingData);
+      setInProgressOrders(progressData);
     } catch (error) {
       console.error("Error al cargar pedidos:", error);
     } finally {

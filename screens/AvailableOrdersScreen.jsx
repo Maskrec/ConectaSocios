@@ -36,12 +36,14 @@ const AvailableOrdersScreen = () => {
       setUser(resProfile.data);
 
       // 2. Si la deuda es menor a 400, buscamos pedidos
-      if (parseFloat(resProfile.data.amount_to_deliver) < 400) {
+      const debtAmount = resProfile.data.amount_to_deliver ? parseFloat(resProfile.data.amount_to_deliver) : 0;
+      if (debtAmount < 400) {
         const response = await apiClient.get('/pedidos/disponibles/');
         const ordersData = Array.isArray(response.data) ? response.data : (response.data.results || []);
-        const sortedOrders = ordersData.sort((a, b) => {
-          if (a.status === 'accepted_by_commerce') return -1;
-          return 1;
+        const sortedOrders = [...ordersData].sort((a, b) => {
+          if (a.status === 'accepted_by_commerce' && b.status !== 'accepted_by_commerce') return -1;
+          if (b.status === 'accepted_by_commerce' && a.status !== 'accepted_by_commerce') return 1;
+          return 0;
         });
         setOrders(sortedOrders);
       }
@@ -75,7 +77,8 @@ const AvailableOrdersScreen = () => {
         return;
     }
 
-    if (parseFloat(user.amount_to_deliver) >= 400) {
+    const currentDebt = user?.amount_to_deliver ? parseFloat(user.amount_to_deliver) : 0;
+    if (currentDebt >= 400) {
         Alert.alert("Bloqueo de Cuenta", "No puedes aceptar pedidos hasta liquidar tu deuda de $400.");
         return;
     }
@@ -169,7 +172,8 @@ const AvailableOrdersScreen = () => {
   };
 
   // --- VISTA DE BLOQUEO POR DEUDA ---
-  if (user && parseFloat(user.amount_to_deliver) >= 400) {
+  const currentDebt = user?.amount_to_deliver ? parseFloat(user.amount_to_deliver) : 0;
+  if (user && currentDebt >= 400) {
       return (
           <View style={styles.container}>
               <StatusBar barStyle="light-content" backgroundColor={DANGER_COLOR} />
@@ -181,7 +185,7 @@ const AvailableOrdersScreen = () => {
                   <Ionicons name="lock-closed" size={80} color={DANGER_COLOR} />
                   <Text style={styles.blockTitle}>Debe liquidar su deuda</Text>
                   <Text style={styles.blockText}>
-                      Tu deuda actual es de <Text style={{fontWeight: 'bold'}}>${user.amount_to_deliver}</Text>.
+                      Tu deuda actual es de <Text style={{fontWeight: 'bold'}}>${currentDebt.toFixed(2)}</Text>.
                       El límite permitido es de $400.00.
                   </Text>
                   <TouchableOpacity

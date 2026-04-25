@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 
 // Importa los Providers y el hook
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -27,8 +27,11 @@ import CommerceOrderDetailScreen from './screens/CommerceOrderDetailScreen';
 import CommerceProfileScreen from './screens/CommerceProfileScreen';
 import AddProductScreen from './screens/AddProductScreen';
 
-// Navigator para Conductores
-import DriverNavigator from './navigation/DriverNavigator';
+// Pantallas de Conductor (Taxis)
+import AvailableTripsScreen from './screens/driver/AvailableTripsScreen';
+import CurrentTripScreen from './screens/driver/CurrentTripScreen';
+import TripHistoryScreen from './screens/driver/TripHistoryScreen';
+import DriverProfileScreen from './screens/driver/DriverProfileScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -39,6 +42,10 @@ function CourierTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarStyle: {
+          paddingBottom: Platform.OS === 'ios' ? 30 : 35,
+          height: Platform.OS === 'ios' ? 85 : 85,
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Disponibles') iconName = focused ? 'list-circle' : 'list-circle-outline';
@@ -65,6 +72,10 @@ function CommerceTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarStyle: {
+          paddingBottom: Platform.OS === 'ios' ? 30 : 35,
+          height: Platform.OS === 'ios' ? 85 : 85,
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Pedidos') iconName = focused ? 'receipt' : 'receipt-outline';
@@ -83,7 +94,37 @@ function CommerceTabs() {
   );
 }
 
-// --- 3. Elige qué navegador mostrar ---
+// --- 3. Pestañas para CONDUCTORES (Taxis) ---
+function DriverTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: {
+          paddingBottom: Platform.OS === 'ios' ? 30 : 35,
+          height: Platform.OS === 'ios' ? 85 : 85,
+        },
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+          if (route.name === 'ViajesDisponibles') iconName = focused ? 'car' : 'car-outline';
+          else if (route.name === 'TripActual') iconName = focused ? 'map' : 'map-outline';
+          else if (route.name === 'Historial') iconName = focused ? 'time' : 'time-outline';
+          else if (route.name === 'Perfil') iconName = focused ? 'person-circle' : 'person-circle-outline';
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#FFCC00', // Safety Yellow
+        tabBarInactiveTintColor: 'gray',
+      })}
+    >
+      <Tab.Screen name="ViajesDisponibles" component={AvailableTripsScreen} options={{ tabBarLabel: 'Disponibles' }} />
+      <Tab.Screen name="TripActual" component={CurrentTripScreen} options={{ tabBarLabel: 'Mapa' }} />
+      <Tab.Screen name="Historial" component={TripHistoryScreen} options={{ tabBarLabel: 'Historial' }} />
+      <Tab.Screen name="Perfil" component={DriverProfileScreen} options={{ tabBarLabel: 'Perfil' }} />
+    </Tab.Navigator>
+  );
+}
+
+// --- 4. Elige qué navegador mostrar ---
 function AppNavigator() {
   const { authToken, role, isLoading } = useAuth();
 
@@ -112,7 +153,7 @@ function AppNavigator() {
           ) : role === 'driver' ? (
             // --- Stack de Conductor de Taxi ---
             <>
-              <Stack.Screen name="MainDriver" component={DriverNavigator} options={{ headerShown: false }} />
+              <Stack.Screen name="MainDriver" component={DriverTabs} options={{ headerShown: false }} />
             </>
           ) : role === 'owner' ? (
             // --- Stack de Comercio ---

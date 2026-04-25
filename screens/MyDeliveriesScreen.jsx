@@ -28,8 +28,11 @@ const MyDeliveriesScreen = () => {
     setIsLoading(true);
     try {
       const response = await apiClient.get('/mis-entregas/');
+      
+      const ordersData = Array.isArray(response.data) ? response.data : (response.data.results || []);
+      
       // Ordenar: Los más recientes arriba
-      const sorted = response.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const sorted = ordersData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setMyOrders(sorted);
     } catch (error) {
       console.error("Error al obtener mis entregas:", error);

@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 15,
-    paddingBottom: 20,
+    paddingBottom: 90,
   },
   tripItem: {
     backgroundColor: '#fff',

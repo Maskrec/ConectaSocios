@@ -82,6 +82,34 @@ const CurrentTripScreen = ({ navigation }) => {
     })
   ).current;
 
+  // --- SEGUIMIENTO GPS EN TIEMPO REAL ---
+  useEffect(() => {
+    let locationSubscription = null;
+
+    const startTracking = async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+
+      locationSubscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 5000, // Envía ubicación cada 5 segundos
+          distanceInterval: 10 // O cada 10 metros
+        },
+        async (location) => {
+          const { latitude, longitude } = location.coords;
+          setDriverLocation({ latitude, longitude });
+          try {
+            await apiClient.post('/actualizar-ubicacion/', { latitude, longitude });
+          } catch (error) {}
+        }
+      );
+    };
+
+    startTracking();
+    return () => { if (locationSubscription) locationSubscription.remove(); };
+  }, []);
+
   const fetchCurrentTrip = async () => {
     try {
       // Obtener el viaje actual del conductor
@@ -169,13 +197,24 @@ const CurrentTripScreen = ({ navigation }) => {
     }
 
     // Si pasa la validación, envía la acción al servidor
-    try {
-      await apiClient.post(`/viajes/${trip.id}/accion/${nextAction.action}/`);
-      Alert.alert('Éxito', `Viaje actualizado a ${nextAction.label}`);
-      await fetchCurrentTrip();
-    } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar el viaje');
-    }
+    const executeAction = async () => {
+      try {
+        await apiClient.post(`/viajes/${trip.id}/accion/${nextAction.action}/`);
+        Alert.alert('Éxito', `Viaje actualizado a ${nextAction.label}`);
+        await fetchCurrentTrip();
+      } catch (error) {
+        Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar el viaje');
+      }
+    };
+
+    // Confirmación estricta para iniciar viaje (Abordaje)
+    if (nextAction.action === 'start') {
+      Alert.alert(
+        'Confirmar Abordaje',
+        '¿Confirmas que el pasajero ya está a bordo de la unidad para iniciar la ruta hacia el destino?',
+        [ { text: 'Aún no', style: 'cancel' }, { text: 'Sí, Iniciar Viaje', onPress: executeAction } ]
+      );
+    } else { executeAction(); }
   };
 
   const handleCancelTrip = () => {
@@ -457,9 +496,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 25,
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 65,
     elevation: 20,
-    minHeight: 380, // Asegura que tenga cuerpo suficiente para deslizarse
+    minHeight: 400, // Asegura que tenga cuerpo suficiente para deslizarse
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,

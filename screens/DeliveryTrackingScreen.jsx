@@ -46,6 +46,7 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [courierLocation, setCourierLocation] = useState(null);
   const [distanceToTarget, setDistanceToTarget] = useState(null);
+  const [sysConfig, setSysConfig] = useState(null);
   const mapRef = useRef(null);
 
   // 1. Cargar Detalles del Pedido
@@ -53,6 +54,10 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
     try {
       const response = await apiClient.get(`/mis-entregas/${orderId}/`);
       setOrder(response.data);
+      
+      // Cargar configuración del sistema para la comisión
+      const configRes = await apiClient.get('/config/');
+      setSysConfig(configRes.data);
     } catch (error) {
       Alert.alert("Error", "No se pudo cargar la información del pedido.");
       navigation.goBack();
@@ -72,6 +77,17 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
       if (status !== 'granted') {
         Alert.alert("Permiso denegado", "Se necesita ubicación para realizar entregas.");
         return;
+      }
+
+      // Obtener ubicación inicial de inmediato para dibujar la ruta sin tener que esperar a que el repartidor se mueva
+      try {
+        const initialLoc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setCourierLocation({
+          latitude: initialLoc.coords.latitude,
+          longitude: initialLoc.coords.longitude
+        });
+      } catch (err) {
+        console.log("Ubicación rápida no disponible, esperando al GPS...", err);
       }
 
       // Configuración: Actualiza cada 5 segundos O cada 10 metros
@@ -160,7 +176,13 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
 
       // --- CÁLCULO DE PAGOS ---
       const subtotal = parseFloat(order.products_total);
-      const comisionComercio = subtotal * 0.06; // 6% de comisión
+      
+      // Obtenemos la comisión desde los parámetros del sistema (si existe 'commerce_commission_percent' o 'platform_fee_percent')
+      const commissionRate = sysConfig?.commerce_commission_percent !== undefined 
+        ? parseFloat(sysConfig.commerce_commission_percent) 
+        : (sysConfig?.platform_fee_percent ? parseFloat(sysConfig.platform_fee_percent) : 0.06);
+
+      const comisionComercio = subtotal * commissionRate;
       const totalAPagarAlLocal = subtotal - comisionComercio;
 
       // --- VENTANA EMERGENTE DE CONFIRMACIÓN ---
@@ -168,7 +190,7 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
         "💳 Pago al Comercio",
         `Resumen de cuenta:\n\n` +
         `Subtotal productos: $${subtotal.toFixed(2)}\n` +
-        `Comisión App (6%): -$${comisionComercio.toFixed(2)}\n\n` +
+        `Comisión App (${(commissionRate * 100).toFixed(1)}%): -$${comisionComercio.toFixed(2)}\n\n` +
         `PAGAR AL LOCAL: $${totalAPagarAlLocal.toFixed(2)}\n\n` +
         `¿Confirmas que ya pagaste esta cantidad al comercio?`,
         [
@@ -268,7 +290,7 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
         </Marker>
 
         {/* Línea de Ruta (Solo si tenemos ubicación del repartidor) */}
-        {courierLocation && (
+        {Platform.OS !== 'web' && courierLocation && !isNaN(targetLoc.latitude) && !isNaN(targetLoc.longitude) && (
            <MapViewDirections
              origin={courierLocation}
              destination={targetLoc}
@@ -386,7 +408,7 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: 'white',
     borderTopLeftRadius: 25, borderTopRightRadius: 25,
-    paddingHorizontal: 25, paddingBottom: 30, paddingTop: 12,
+    paddingHorizontal: 25, paddingBottom: Platform.OS === 'ios' ? 40 : 65, paddingTop: 12,
     elevation: 20, shadowColor: '#000', shadowOffset: {height: -4}, shadowOpacity: 0.1, shadowRadius: 10
   },
   sheetHandle: {
