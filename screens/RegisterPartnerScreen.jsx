@@ -21,6 +21,7 @@ const RegisterPartnerScreen = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [role, setRole] = useState('courier');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [formData, setFormData] = useState({
     username: '', password: '', first_name: '', last_name: '', phone_number: '',
@@ -62,6 +63,9 @@ const RegisterPartnerScreen = () => {
           confirmPassword 
         });
         return Alert.alert("Campos incompletos", "Por favor completa todos los campos obligatorios.");
+    }
+    if (!acceptedTerms) {
+        return Alert.alert("Términos y Condiciones", "Debes aceptar los términos y condiciones para continuar.");
     }
     if (role === 'owner' && !selectedCategory) {
         return Alert.alert("Falta Categoría", "Por favor selecciona el giro de tu comercio.");
@@ -204,6 +208,21 @@ const RegisterPartnerScreen = () => {
               <TextInput placeholder="Teléfono" style={styles.input} keyboardType="phone-pad" onChangeText={(t) => handleChange('phone_number', t)} />
             </View>
 
+            {/* Checkbox de Términos y Condiciones */}
+            <View style={styles.termsContainer}>
+              <TouchableOpacity
+                style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}
+                onPress={() => setAcceptedTerms(!acceptedTerms)}
+              >
+                {acceptedTerms && <Ionicons name="checkmark" size={16} color="white" />}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Terms')} style={{flex: 1}}>
+                <Text style={styles.termsText}>
+                  He leído y acepto los <Text style={{fontWeight: 'bold', textDecorationLine: 'underline'}}>términos y condiciones</Text>.
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
               {loading ? <ActivityIndicator color="white" /> : <Text style={styles.registerButtonText}>CONTINUAR</Text>}
             </TouchableOpacity>
@@ -316,6 +335,8 @@ const styles = StyleSheet.create({
   closeButton: { marginTop: 15, alignItems: 'center', padding: 10 },
   sectionLabel: { paddingHorizontal: 0, marginBottom: 10, marginTop: 10 },
   checkboxContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 15 },
+  termsContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, paddingHorizontal: 5 },
+  termsText: { fontSize: 13, color: '#666', marginLeft: 10 },
   checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: '#FF6B6B', justifyContent: 'center', alignItems: 'center' },
   checkboxChecked: { backgroundColor: '#FF6B6B' }
 });

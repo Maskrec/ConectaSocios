@@ -19,6 +19,7 @@ import EditProductScreen from './screens/EditProductScreen';
 import SetCommerceLocationScreen from './screens/SetCommerceLocationScreen';
 import RegisterPartnerScreen from './screens/RegisterPartnerScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import TermsScreen from './screens/TermsScreen';
 
 // Pantallas de Comercio
 import CommerceOrdersScreen from './screens/CommerceOrdersScreen';
@@ -175,6 +176,7 @@ function AppNavigator() {
           <>
             <Stack.Screen name="Login" component={LoginPage} options={{ headerShown: false }} />
             <Stack.Screen name="RegisterPartner" component={RegisterPartnerScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: false }} />
           </>
         )}
       </Stack.Navigator>
