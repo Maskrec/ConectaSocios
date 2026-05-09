@@ -14,12 +14,15 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
+  Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../../api';
 import { Ionicons } from '@expo/vector-icons';
 import Alert from '../../components/AlertPolyfill';
+import CONFIG from '../../config';
 
 const THEME_COLOR = '#FFCC00'; // Safety Yellow
 
@@ -35,6 +38,7 @@ const DriverProfileScreen = ({ navigation }) => {
   const [debtConfirmation, setDebtConfirmation] = useState(false);
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [profileImage, setProfileImage] = useState(null);
 
   const [formData, setFormData] = useState({
     car_brand: user?.car_brand || '',
@@ -89,6 +93,23 @@ const DriverProfileScreen = ({ navigation }) => {
     }
   };
 
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería para cambiar tu foto.');
+      return;
+    }
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
   const handleSaveProfile = async () => {
     // Validar campos requeridos
     if (!formData.car_brand.trim()) {
@@ -103,17 +124,38 @@ const DriverProfileScreen = ({ navigation }) => {
       Alert.alert('Error', 'La placa del vehículo es requerida');
       return;
     }
-    if (formData.is_taxi_driver && !formData.vehicle_registration.trim()) {
-      Alert.alert('Error', 'La matrícula es requerida para taxistas');
-      return;
-    }
+    // COMENTADO TEMPORALMENTE: 
+    // if (formData.is_taxi_driver && !formData.vehicle_registration.trim()) {
+    //   Alert.alert('Error', 'La matrícula es requerida para taxistas');
+    //   return;
+    // }
 
     try {
       setIsSaving(true);
-      const response = await apiClient.patch('/auth/perfil-conductor/', formData);
+
+      // Necesitamos enviar como FormData para que acepte la imagen
+      const formDataToSend = new FormData();
+      formDataToSend.append('car_brand', formData.car_brand);
+      formDataToSend.append('car_model', formData.car_model);
+      formDataToSend.append('license_plate', formData.license_plate);
+      // formDataToSend.append('is_taxi_driver', formData.is_taxi_driver);
+      // formDataToSend.append('driver_license', formData.driver_license);
+      // formDataToSend.append('vehicle_registration', formData.vehicle_registration);
+
+      if (profileImage) {
+        const filename = profileImage.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        formDataToSend.append('profile_image', { uri: profileImage, name: filename, type });
+      }
+
+      const response = await apiClient.patch('/auth/perfil-conductor/', formDataToSend, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setUser(response.data);
       setIsEditing(false);
-      Alert.alert('Éxito', 'Información de vehículo actualizada correctamente');
+      setProfileImage(null);
+      Alert.alert('Éxito', 'Perfil actualizado correctamente');
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Error al guardar los cambios';
       Alert.alert('Error', errorMsg);
@@ -190,7 +232,7 @@ const DriverProfileScreen = ({ navigation }) => {
       <View style={styles.header}>
         <View style={styles.headerTitle}>
           <Text style={styles.title}>Mi Perfil</Text>
-          <Text style={styles.subtitle}>Conductor de Taxi</Text>
+          <Text style={styles.subtitle}>Socio / Conductor</Text>
         </View>
         <TouchableOpacity
           style={styles.editButton}
@@ -209,6 +251,26 @@ const DriverProfileScreen = ({ navigation }) => {
           {/* Personal Info Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Información Personal</Text>
+            
+            {/* CONTENEDOR FOTO DE PERFIL */}
+            <View style={styles.avatarContainer}>
+              {profileImage || user?.profile_image ? (
+                <Image 
+                  source={{ uri: profileImage || (user.profile_image.startsWith('http') ? user.profile_image : `${CONFIG.API_URL}${user.profile_image}`) }} 
+                  style={styles.avatarImage} 
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person" size={40} color="#ccc" />
+                </View>
+              )}
+              {isEditing && (
+                <TouchableOpacity style={styles.editAvatarBtn} onPress={pickImage}>
+                  <Ionicons name="camera" size={16} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
+
             <View style={styles.infoBox}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Nombre</Text>
@@ -270,6 +332,8 @@ const DriverProfileScreen = ({ navigation }) => {
                   />
                 </View>
 
+                {/* SECCIÓN DE TAXIS OFICIALES OCULTA DE MOMENTO
+                
                 <View style={styles.formGroup}>
                   <View style={styles.switchRow}>
                     <Text style={styles.formLabel}>¿Soy Taxista Oficial?</Text>
@@ -307,6 +371,8 @@ const DriverProfileScreen = ({ navigation }) => {
                     </View>
                   </>
                 )}
+                
+                */}
 
                 {/* Save Button */}
                 <TouchableOpacity
@@ -338,12 +404,14 @@ const DriverProfileScreen = ({ navigation }) => {
                   <Text style={styles.infoLabel}>Placa</Text>
                   <Text style={styles.infoValue}>{formData.license_plate || 'Sin definir'}</Text>
                 </View>
+                {/* TIPO DE CONDUCTOR OCULTO DE MOMENTO
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Tipo</Text>
                   <Text style={styles.infoValue}>
                     {formData.is_taxi_driver ? 'Taxista Oficial' : 'Conductor Particular'}
                   </Text>
                 </View>
+                */}
               </View>
             )}
           </View>
@@ -591,6 +659,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: 15,
+    alignSelf: 'center',
+  },
+  avatarImage: {
+    width: 90, height: 90, borderRadius: 45, backgroundColor: '#eee',
+  },
+  avatarPlaceholder: {
+    width: 90, height: 90, borderRadius: 45, backgroundColor: '#eee',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  editAvatarBtn: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: THEME_COLOR,
+    width: 32, height: 32, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 3, borderColor: '#F5F5F5',
   },
   formBox: {
     backgroundColor: '#fff',

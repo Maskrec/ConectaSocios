@@ -34,16 +34,22 @@ const TripHistoryScreen = () => {
     try {
       const params = {};
       
+      const getLocalStartOfDayISO = (d) => {
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+      };
+
       // Agregar filtro de fechas según el período seleccionado
       const today = new Date();
       if (filterPeriod === 'week') {
-        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        params.desde = weekAgo.toISOString().split('T')[0];
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        params.desde = getLocalStartOfDayISO(weekAgo);
       } else if (filterPeriod === 'month') {
-        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-        params.desde = monthAgo.toISOString().split('T')[0];
+        const monthAgo = new Date(today);
+        monthAgo.setDate(monthAgo.getDate() - 30);
+        params.desde = getLocalStartOfDayISO(monthAgo);
       } else if (filterPeriod === 'today') {
-        params.desde = today.toISOString().split('T')[0];
+        params.desde = getLocalStartOfDayISO(today);
       }
       
       const response = await apiClient.get('/viajes/mis-ganancias/', { params });
