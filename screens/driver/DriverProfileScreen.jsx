@@ -127,10 +127,8 @@ const DriverProfileScreen = ({ navigation }) => {
   };
 
   // --- LÓGICA DE DEUDA Y COMISIONES ---
-  // La deuda en la base de datos se refleja como un saldo negativo en la billetera
-  const debtAmount = user?.wallet_balance && parseFloat(user.wallet_balance) < 0 
-    ? Math.abs(parseFloat(user.wallet_balance)) 
-    : 0;
+  // Obtenemos la deuda directamente calculada desde Django 
+  const debtAmount = user?.calculated_debt !== undefined ? parseFloat(user.calculated_debt) : 0;
   
   const isBlocked = debtAmount >= 700; // Límite de bloqueo para taxistas
   const isWarning = debtAmount >= 600; // Límite de advertencia

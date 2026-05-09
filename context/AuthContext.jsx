@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }) => {
       apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
 
       // 3. Obtener los datos del Perfil
-      const profileResponse = await apiClient.get('/auth/perfil/'); // Ajusta a '/perfil/' si esa es tu ruta exacta
+      const profileResponse = await apiClient.get('/perfil/'); // Unificado con loadToken()
       const userData = profileResponse.data;
       const userRole = userData.role;
 
