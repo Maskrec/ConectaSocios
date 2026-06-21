@@ -7,7 +7,8 @@ import {
   Linking,
   Platform,
   TouchableOpacity,
-  StatusBar
+  StatusBar,
+  ScrollView
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from '../components/MapShim';
 import MapViewDirections from '../components/MapViewDirectionsShim';
@@ -48,6 +49,38 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   const [distanceToTarget, setDistanceToTarget] = useState(null);
   const [sysConfig, setSysConfig] = useState(null);
   const mapRef = useRef(null);
+
+  // Obtener comercios únicos involucrados en el pedido de mercado
+  const getUniqueCommerces = (items) => {
+    if (!items) return [];
+    const unique = {};
+    items.forEach(item => {
+      const lat = parseFloat(item.commerce_latitude);
+      const lon = parseFloat(item.commerce_longitude);
+      if (lat && lon && item.commerce_name) {
+        const key = `${lat},${lon}`;
+        if (!unique[key]) {
+          unique[key] = {
+            name: item.commerce_name,
+            latitude: lat,
+            longitude: lon,
+            color: item.commerce_color || '#5D5FEF'
+          };
+        }
+      }
+    });
+    return Object.values(unique);
+  };
+
+  const handleUpdateItemStatus = async (itemId, status) => {
+    try {
+      await apiClient.post(`/pedidos/items/${itemId}/actualizar-estado/`, { status });
+      // Recargar detalles de la orden para actualizar la UI
+      fetchOrderDetails();
+    } catch (error) {
+      Alert.alert("Error", "No se pudo actualizar el estado del producto.");
+    }
+  };
 
   // 1. Cargar Detalles del Pedido
   const fetchOrderDetails = async () => {
@@ -128,8 +161,16 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
 
       if (order.status === 'accepted') {
         // Fase 1: Ir al comercio
-        targetLat = parseFloat(order.commerce.latitude);
-        targetLon = parseFloat(order.commerce.longitude);
+        if (order.is_mercado) {
+          const uniqueCommerces = getUniqueCommerces(order.items);
+          if (uniqueCommerces.length > 0) {
+            targetLat = uniqueCommerces[0].latitude;
+            targetLon = uniqueCommerces[0].longitude;
+          }
+        } else if (order.commerce) {
+          targetLat = parseFloat(order.commerce.latitude);
+          targetLon = parseFloat(order.commerce.longitude);
+        }
       } else if (order.status === 'in_progress') {
         // Fase 2: Ir al cliente
         targetLat = parseFloat(order.delivery_address.latitude);
@@ -166,31 +207,32 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   };
 
   const handlePickUp = async () => {
-      if (!distanceToTarget) return;
+      if (!order.is_mercado && !distanceToTarget) return;
 
       // Geocerca: Debe estar a menos de 50 metros del comercio (ajustado de 10m para evitar errores GPS)
-      if (distanceToTarget > 50) {
+      if (!order.is_mercado && distanceToTarget > 50) {
         Alert.alert("Aún estás lejos", `Debes estar en el comercio. Estás a ${Math.round(distanceToTarget)}m.`);
         return;
       }
 
-      // --- CÁLCULO DE PAGOS ---
-      const subtotal = parseFloat(order.products_total);
-      
-      // Obtenemos la comisión desde los parámetros del sistema (si existe 'commerce_commission_percent' o 'platform_fee_percent')
-      const commissionRate = sysConfig?.commerce_commission_percent !== undefined 
-        ? parseFloat(sysConfig.commerce_commission_percent) 
-        : (sysConfig?.platform_fee_percent ? parseFloat(sysConfig.platform_fee_percent) : 0.06);
+      // Para pedidos del Mercado, validar que todos los productos estén marcados
+      if (order.is_mercado) {
+        const hasPending = order.items?.some(item => item.purchase_status === 'pending');
+        if (hasPending) {
+          Alert.alert("Checklist Incompleto", "Por favor marca todos los productos como Conseguido o No Disponible antes de continuar.");
+          return;
+        }
+      }
 
-      const comisionComercio = subtotal * commissionRate;
-      const totalAPagarAlLocal = subtotal - comisionComercio;
+      // --- CÁLCULO DE PAGOS (El repartidor paga el 100% del subtotal en todos los pedidos) ---
+      const subtotal = parseFloat(order.products_total);
+      const totalAPagarAlLocal = subtotal;
 
       // --- VENTANA EMERGENTE DE CONFIRMACIÓN ---
       Alert.alert(
         "💳 Pago al Comercio",
         `Resumen de cuenta:\n\n` +
-        `Subtotal productos: $${subtotal.toFixed(2)}\n` +
-        `Comisión App (${(commissionRate * 100).toFixed(1)}%): -$${comisionComercio.toFixed(2)}\n\n` +
+        `Subtotal productos: $${subtotal.toFixed(2)}\n\n` +
         `PAGAR AL LOCAL: $${totalAPagarAlLocal.toFixed(2)}\n\n` +
         `¿Confirmas que ya pagaste esta cantidad al comercio?`,
         [
@@ -250,20 +292,34 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
     );
   }
 
-  // Validar coordenadas antes de pintar mapa
-  if (!order.commerce?.latitude || !order.delivery_address?.latitude) {
-     return <View style={styles.loader}><Text>Error: Faltan coordenadas en el pedido.</Text></View>;
-  }
-
+  const uniqueCommerces = getUniqueCommerces(order.items);
   const isPickupPhase = order.status === 'accepted';
+
+  // Validar coordenadas antes de pintar mapa
+  if (isPickupPhase && !order.is_mercado && (!order.commerce?.latitude || !order.delivery_address?.latitude)) {
+     return <View style={styles.loader}><Text>Error: Faltan coordenadas del comercio en el pedido.</Text></View>;
+  }
+  if (!isPickupPhase && !order.delivery_address?.latitude) {
+     return <View style={styles.loader}><Text>Error: Faltan coordenadas del cliente en el pedido.</Text></View>;
+  }
+  if (isPickupPhase && order.is_mercado && uniqueCommerces.length === 0) {
+     return <View style={styles.loader}><Text>Error: No se encontraron tiendas para este pedido de mercado.</Text></View>;
+  }
 
   // Definir destino actual según fase
   const targetLoc = isPickupPhase
-    ? { latitude: parseFloat(order.commerce.latitude), longitude: parseFloat(order.commerce.longitude) }
+    ? (order.is_mercado && uniqueCommerces.length > 0
+        ? { latitude: uniqueCommerces[0].latitude, longitude: uniqueCommerces[0].longitude }
+        : { latitude: parseFloat(order.commerce.latitude), longitude: parseFloat(order.commerce.longitude) })
     : { latitude: parseFloat(order.delivery_address.latitude), longitude: parseFloat(order.delivery_address.longitude) };
 
-  const targetName = isPickupPhase ? order.commerce.name : order.customer_name;
-  const targetAddress = isPickupPhase ? order.commerce.address : order.delivery_address.address_string;
+  const targetName = isPickupPhase
+    ? (order.is_mercado ? "Tiendas del Mercado" : order.commerce.name)
+    : order.customer_name;
+
+  const targetAddress = isPickupPhase
+    ? (order.is_mercado ? `${uniqueCommerces.length} locales comerciales` : order.commerce.address)
+    : order.delivery_address.address_string;
 
   return (
     <View style={styles.container}>
@@ -280,14 +336,29 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
         showsUserLocation={true}
         followsUserLocation={true}
         provider={PROVIDER_GOOGLE}
-        mapPadding={{ bottom: 320, top: 40 }} // Padding para que los elementos UI no tapen el mapa
+        mapPadding={{ bottom: 340, top: 40 }} // Padding para que los elementos UI no tapen el mapa
       >
-        {/* Marcador del Destino */}
-        <Marker coordinate={targetLoc} title={targetName} description={isPickupPhase ? "Punto de Recolección" : "Punto de Entrega"}>
-           <View style={[styles.markerIcon, {backgroundColor: isPickupPhase ? THEME_COLOR : SUCCESS_COLOR}]}>
-              <Ionicons name={isPickupPhase ? "storefront" : "home"} size={20} color="#fff" />
-           </View>
-        </Marker>
+        {/* Marcadores del Destino */}
+        {!isPickupPhase || !order.is_mercado ? (
+          <Marker coordinate={targetLoc} title={targetName} description={isPickupPhase ? "Punto de Recolección" : "Punto de Entrega"}>
+             <View style={[styles.markerIcon, {backgroundColor: isPickupPhase ? THEME_COLOR : SUCCESS_COLOR}]}>
+                <Ionicons name={isPickupPhase ? "storefront" : "home"} size={20} color="#fff" />
+             </View>
+          </Marker>
+        ) : (
+          uniqueCommerces.map((comm, idx) => (
+            <Marker
+              key={`comm-marker-${idx}`}
+              coordinate={{ latitude: comm.latitude, longitude: comm.longitude }}
+              title={comm.name}
+              description="Local del Mercado"
+            >
+               <View style={[styles.markerIcon, {backgroundColor: comm.color}]}>
+                  <Ionicons name="storefront" size={20} color="#fff" />
+               </View>
+            </Marker>
+          ))
+        )}
 
         {/* Línea de Ruta (Solo si tenemos ubicación del repartidor) */}
         {Platform.OS !== 'web' && courierLocation && !isNaN(targetLoc.latitude) && !isNaN(targetLoc.longitude) && (
@@ -314,6 +385,11 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
               <Text style={styles.phaseLabel}>
                   {isPickupPhase ? "📍 RECOGER EN:" : "🏁 ENTREGAR A:"}
               </Text>
+              {isPickupPhase && (order.is_mercado || order.commerce?.is_affiliated === false) && (
+                <View style={{backgroundColor: '#FDEDEC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start', marginBottom: 5}}>
+                  <Text style={{color: '#E74C3C', fontWeight: 'bold', fontSize: 10}}>COMPRA DIRECTA (LOCAL NO AFILIADO)</Text>
+                </View>
+              )}
               <Text style={styles.targetName} numberOfLines={1}>{targetName}</Text>
               <Text style={styles.addressText} numberOfLines={2}>{targetAddress}</Text>
            </View>
@@ -360,18 +436,87 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
            </View>
         </View>
 
+        {/* Checklist del Repartidor para Pedidos de Mercado en recogida */}
+        {order.is_mercado && isPickupPhase && (
+          <View style={styles.checklistContainer}>
+            <Text style={styles.checklistTitle}>Lista de Compras del Mercado:</Text>
+            <ScrollView style={styles.checklistScroll} nestedScrollEnabled={true}>
+              {(order.items || []).map((item) => {
+                const isPurchased = item.purchase_status === 'purchased';
+                const isUnavailable = item.purchase_status === 'unavailable';
+
+                return (
+                  <View key={item.id} style={styles.checklistItem}>
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemName}>{item.product_name}</Text>
+                      <View style={styles.itemMetaRow}>
+                        <View style={[styles.commBadge, {backgroundColor: item.commerce_color || '#5D5FEF'}]}>
+                          <Text style={styles.commBadgeText}>{item.commerce_name || 'Mercado'}</Text>
+                        </View>
+                        <Text style={styles.itemQty}>
+                          Cant: {item.weight_purchased ? `${item.weight_purchased} kg` : item.quantity}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.itemActions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.actionBtn, 
+                          styles.checkBtn,
+                          isPurchased && styles.checkBtnActive
+                        ]}
+                        onPress={() => handleUpdateItemStatus(item.id, isPurchased ? 'pending' : 'purchased')}
+                      >
+                        <Ionicons 
+                          name={isPurchased ? "checkmark-circle" : "checkmark-circle-outline"} 
+                          size={22} 
+                          color={isPurchased ? "#fff" : "#2ECC71"} 
+                        />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.actionBtn, 
+                          styles.closeBtn,
+                          isUnavailable && styles.closeBtnActive
+                        ]}
+                        onPress={() => handleUpdateItemStatus(item.id, isUnavailable ? 'pending' : 'unavailable')}
+                      >
+                        <Ionicons 
+                          name={isUnavailable ? "close" : "close-circle-outline"} 
+                          size={22} 
+                          color={isUnavailable ? "#fff" : "#E74C3C"} 
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
         {/* 3. Botón de Acción Principal (Gigante) */}
         <View style={styles.actionArea}>
             {isPickupPhase ? (
                 <TouchableOpacity
-                  style={[styles.mainButton, {backgroundColor: THEME_COLOR}]}
+                  style={[
+                    styles.mainButton, 
+                    {backgroundColor: THEME_COLOR},
+                    (order.is_mercado && order.items?.some(item => item.purchase_status === 'pending')) && styles.disabledButton
+                  ]}
                   onPress={handlePickUp}
-                  // Opcional: Deshabilitar visualmente si está lejos
                   activeOpacity={0.8}
+                  disabled={order.is_mercado && order.items?.some(item => item.purchase_status === 'pending')}
                 >
                     <Text style={styles.mainButtonText}>MARCAR RECOLECTADO</Text>
-                    {(!distanceToTarget || distanceToTarget > 50) && (
-                        <Text style={styles.geofenceText}>Acércate al local para activar</Text>
+                    {order.is_mercado && order.items?.some(item => item.purchase_status === 'pending') ? (
+                        <Text style={styles.geofenceText}>Registra todos los productos primero</Text>
+                    ) : (
+                        (!distanceToTarget || distanceToTarget > 50) && !order.is_mercado && (
+                            <Text style={styles.geofenceText}>Acércate al local para activar</Text>
+                        )
                     )}
                 </TouchableOpacity>
             ) : (
@@ -450,6 +595,91 @@ const styles = StyleSheet.create({
     marginTop: 4, backgroundColor: 'rgba(0,0,0,0.15)', paddingHorizontal: 10, paddingVertical: 2, borderRadius: 6
   },
   totalCollectText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+
+  // Checklist Styles
+  checklistContainer: {
+    marginTop: 5,
+    marginBottom: 15,
+  },
+  checklistTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  checklistScroll: {
+    maxHeight: 180,
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9F9F9',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+  },
+  itemInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  itemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  itemMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  commBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  commBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  itemQty: {
+    fontSize: 12,
+    color: '#666',
+  },
+  itemActions: {
+    flexDirection: 'row',
+  },
+  actionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginLeft: 8,
+  },
+  checkBtn: {
+    borderColor: '#2ECC71',
+  },
+  checkBtnActive: {
+    backgroundColor: '#2ECC71',
+    borderColor: '#2ECC71',
+  },
+  closeBtn: {
+    borderColor: '#E74C3C',
+  },
+  closeBtnActive: {
+    backgroundColor: '#E74C3C',
+    borderColor: '#E74C3C',
+  },
+  disabledButton: {
+    backgroundColor: '#BDC3C7',
+  },
 });
 
 export default DeliveryTrackingScreen;

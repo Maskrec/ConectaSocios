@@ -14,7 +14,8 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
-  Image
+  Image,
+  Linking
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
@@ -39,6 +40,8 @@ const DriverProfileScreen = ({ navigation }) => {
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [profileImage, setProfileImage] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'transfer'
+  const WHATSAPP_NUMBER = '524463168380';
 
   const [formData, setFormData] = useState({
     car_brand: user?.car_brand || '',
@@ -182,10 +185,22 @@ const DriverProfileScreen = ({ navigation }) => {
     }
     setAdminUsername('');
     setAdminPassword('');
+    setPaymentMethod('cash');
     setDebtConfirmation(true);
   };
 
   const submitClearDebt = async () => {
+    if (paymentMethod === 'transfer') {
+      const message = `Hola, solicito liquidar mi deuda de comisiones por TRANSFERENCIA.\n\n*Usuario:* @${user.username}\n*Nombre:* ${user.first_name} ${user.last_name}\n*Monto a liquidar:* $${debtAmount.toFixed(2)}\n\nPor favor envíeme el número de cuenta para realizar la transferencia y confirmar.`;
+      const url = `whatsapp://send?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`;
+      
+      setDebtConfirmation(false);
+      Linking.openURL(url).catch(() => {
+        Alert.alert("Error", "WhatsApp no está instalado en este dispositivo.");
+      });
+      return;
+    }
+
     if (!adminUsername || !adminPassword) {
         Alert.alert("Error", "El administrador debe ingresar sus credenciales.");
         return;
@@ -194,15 +209,16 @@ const DriverProfileScreen = ({ navigation }) => {
     try {
         const response = await apiClient.post('/liquidar-deuda/', {
             admin_username: adminUsername,
-            admin_password: adminPassword
+            admin_password: adminPassword,
+            method: paymentMethod
         });
         Alert.alert("¡Corte de Caja Exitoso!", response.data.message || "Tu deuda ha sido liquidada.");
         setDebtConfirmation(false);
         // Refrescar perfil para ver la deuda en 0
-        const resProfile = await apiClient.get('/perfil/');
+        const resProfile = await apiClient.get('/auth/perfil/');
         setUser(resProfile.data);
     } catch (error) {
-        const errorMsg = error.response?.data?.error || "Credenciales de administrador inválidas o error de conexión.";
+        const errorMsg = error.response?.data?.error || error.response?.data?.detail || "Credenciales de administrador inválidas o error de conexión.";
         Alert.alert("Error", errorMsg);
     } finally {
         setClearingDebt(false);
@@ -506,64 +522,103 @@ const DriverProfileScreen = ({ navigation }) => {
              style={styles.modalOverlay}
          >
              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                 <View style={styles.modalContent}>
-                     <View style={{alignItems: 'center', marginBottom: 15}}>
-                         <View style={{backgroundColor: '#FDEDEC', padding: 10, borderRadius: 25, marginBottom: 10}}>
-                             <Ionicons name="wallet" size={30} color="#E74C3C" />
-                         </View>
-                         <Text style={styles.modalTitle}>Liquidar Deuda</Text>
-                     </View>
+                  <View style={styles.modalContent}>
+                      <View style={{alignItems: 'center', marginBottom: 15}}>
+                          <View style={{backgroundColor: '#FDEDEC', padding: 10, borderRadius: 25, marginBottom: 10}}>
+                              <Ionicons name="wallet" size={30} color="#E74C3C" />
+                          </View>
+                          <Text style={styles.modalTitle}>Confirmar Liquidación</Text>
+                      </View>
 
-                     <Text style={styles.modalDesc}>
-                         Vas a liquidar la deuda de <Text style={{fontWeight:'bold', color: '#E74C3C'}}>${debtAmount.toFixed(2)}</Text>.
-                     </Text>
-                     
-                     <Text style={{color: '#888', fontSize: 12, marginBottom: 15, textAlign: 'center'}}>
-                         El administrador de la oficina debe ingresar sus credenciales para autorizar este corte de caja.
-                     </Text>
+                      <Text style={styles.modalDesc}>
+                          Deuda actual: <Text style={{fontWeight:'bold', color: '#E74C3C'}}>${debtAmount.toFixed(2)}</Text>
+                      </Text>
 
-                     <TextInput
-                         style={styles.adminInput}
-                         placeholder="Usuario del Administrador"
-                         value={adminUsername}
-                         onChangeText={setAdminUsername}
-                         autoCapitalize="none"
-                         editable={!clearingDebt}
-                     />
-                     
-                     <TextInput
-                         style={styles.adminInput}
-                         placeholder="Contraseña"
-                         value={adminPassword}
-                         onChangeText={setAdminPassword}
-                         secureTextEntry
-                         editable={!clearingDebt}
-                     />
+                      <Text style={styles.methodLabel}>Método de Pago:</Text>
+                      <View style={styles.methodSelectorRow}>
+                        <TouchableOpacity
+                          style={[styles.methodSelectorBtn, paymentMethod === 'cash' && styles.methodSelectorBtnActive]}
+                          onPress={() => setPaymentMethod('cash')}
+                        >
+                          <Ionicons name="cash" size={16} color={paymentMethod === 'cash' ? '#333' : '#555'} />
+                          <Text style={[styles.methodSelectorBtnText, paymentMethod === 'cash' && styles.methodSelectorBtnTextActive]}>Efectivo</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.methodSelectorBtn, paymentMethod === 'transfer' && styles.methodSelectorBtnActive]}
+                          onPress={() => setPaymentMethod('transfer')}
+                        >
+                          <Ionicons name="card" size={16} color={paymentMethod === 'transfer' ? '#333' : '#555'} />
+                          <Text style={[styles.methodSelectorBtnText, paymentMethod === 'transfer' && styles.methodSelectorBtnTextActive]}>Transferencia</Text>
+                        </TouchableOpacity>
+                      </View>
 
-                     <View style={styles.modalActions}>
-                         <TouchableOpacity
-                             style={styles.cancelBtn}
-                             onPress={() => {
-                                 Keyboard.dismiss();
-                                 setDebtConfirmation(false);
-                             }}
-                             disabled={clearingDebt}
-                         >
-                             <Text style={styles.cancelBtnText}>Cancelar</Text>
-                         </TouchableOpacity>
-                         <TouchableOpacity
-                             style={[styles.confirmBtn, {opacity: clearingDebt ? 0.6 : 1}]}
-                             onPress={submitClearDebt}
-                             disabled={clearingDebt}
-                         >
-                             {clearingDebt ? (
-                                 <ActivityIndicator size="small" color="white" />
-                             ) : (
-                                 <Text style={{color:'white', fontWeight:'bold'}}>Autorizar</Text>
-                             )}
-                         </TouchableOpacity>
-                     </View>
-                 </View>
+                      {paymentMethod === 'cash' ? (
+                        <>
+                          <Text style={{color: '#888', fontSize: 11, marginBottom: 15, textAlign: 'center'}}>
+                              El administrador de la oficina debe ingresar sus credenciales para autorizar este corte de caja en efectivo.
+                          </Text>
+
+                          <TextInput
+                              style={styles.adminInput}
+                              placeholder="Usuario del Administrador"
+                              value={adminUsername}
+                              onChangeText={setAdminUsername}
+                              autoCapitalize="none"
+                              editable={!clearingDebt}
+                          />
+                          
+                          <TextInput
+                              style={styles.adminInput}
+                              placeholder="Contraseña"
+                              value={adminPassword}
+                              onChangeText={setAdminPassword}
+                              secureTextEntry
+                              editable={!clearingDebt}
+                          />
+                        </>
+                      ) : (
+                        <View style={styles.transferInfoBox}>
+                          <Ionicons name="logo-whatsapp" size={24} color="#25D366" style={{marginBottom: 8}} />
+                          <Text style={styles.transferInfoText}>
+                            Serás redirigido al WhatsApp oficial de soporte para solicitar los datos de cuenta bancaria y enviar tu comprobante. La deuda permanecerá pendiente hasta que el administrador liquide el saldo en su panel.
+                          </Text>
+                        </View>
+                      )}
+
+                      <View style={styles.modalActions}>
+                          <TouchableOpacity
+                              style={styles.cancelBtn}
+                              onPress={() => {
+                                  Keyboard.dismiss();
+                                  setDebtConfirmation(false);
+                              }}
+                              disabled={clearingDebt}
+                          >
+                              <Text style={styles.cancelBtnText}>Cancelar</Text>
+                          </TouchableOpacity>
+                          
+                          {paymentMethod === 'cash' ? (
+                            <TouchableOpacity
+                                style={[styles.confirmBtn, {opacity: clearingDebt ? 0.6 : 1}]}
+                                onPress={submitClearDebt}
+                                disabled={clearingDebt}
+                            >
+                                {clearingDebt ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <Text style={{color:'white', fontWeight:'bold'}}>Liquidar Efectivo</Text>
+                                )}
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity
+                                style={[styles.confirmBtn, {backgroundColor: '#25D366'}]}
+                                onPress={submitClearDebt}
+                            >
+                                <Text style={{color:'white', fontWeight:'bold'}}>Enviar WhatsApp</Text>
+                            </TouchableOpacity>
+                          )}
+                      </View>
+                  </View>
              </TouchableWithoutFeedback>
          </KeyboardAvoidingView>
       </Modal>
@@ -816,6 +871,59 @@ const styles = StyleSheet.create({
   cancelBtn: { padding: 15, flex: 1, alignItems: 'center' },
   cancelBtnText: { color: '#666', fontWeight: 'bold' },
   confirmBtn: { backgroundColor: '#E74C3C', padding: 15, borderRadius: 12, flex: 1, alignItems: 'center' },
+  methodLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  methodSelectorRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 20,
+  },
+  methodSelectorBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    backgroundColor: '#fff',
+  },
+  methodSelectorBtnActive: {
+    backgroundColor: THEME_COLOR,
+    borderColor: THEME_COLOR,
+  },
+  methodSelectorBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  methodSelectorBtnTextActive: {
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  transferInfoBox: {
+    backgroundColor: '#E8F8F5',
+    borderColor: '#A3E4D7',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  transferInfoText: {
+    fontSize: 12,
+    color: '#16A085',
+    textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '600',
+  },
 });
 
 export default DriverProfileScreen;

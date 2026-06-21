@@ -114,21 +114,31 @@ const AvailableOrdersScreen = () => {
       setAcceptingOrderId(null); // Unlock: Permitir procesar otra orden
     }
   };
-
   // --- RENDERIZADO DE TARJETA ---
   const renderOrderItem = ({ item }) => {
     const isPendingAtCommerce = item.status === 'pending';
+    const isDirectPurchase = item.is_affiliated === false;
+    const isMercadoOrder = item.is_mercado === true;
 
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.commerceInfo}>
-             <Ionicons name="storefront" size={18} color={THEME_COLOR} style={{marginRight: 8}}/>
-             <Text style={styles.commerceName}>{item.commerce_name}</Text>
+             <Ionicons name="storefront" size={18} color={isMercadoOrder ? '#8E44AD' : THEME_COLOR} style={{marginRight: 8}}/>
+             <Text style={styles.commerceName}>{isMercadoOrder ? 'Pedido Multi-Mercado' : item.commerce_name}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: isPendingAtCommerce ? '#FFF3E0' : '#E8F8F5' }]}>
-             <Text style={{color: isPendingAtCommerce ? PENDING_COLOR : '#1ABC9C', fontWeight: 'bold', fontSize: 11}}>
-                {isPendingAtCommerce ? '⏳ ESPERANDO' : '👨‍🍳 COCINANDO'}
+          <View style={[
+            styles.statusBadge, 
+            { 
+              backgroundColor: isMercadoOrder ? '#F5EEF8' : (isDirectPurchase ? '#FDEDEC' : (isPendingAtCommerce ? '#FFF3E0' : '#E8F8F5')) 
+            }
+          ]}>
+             <Text style={{
+               color: isMercadoOrder ? '#8E44AD' : (isDirectPurchase ? '#E74C3C' : (isPendingAtCommerce ? PENDING_COLOR : '#1ABC9C')), 
+               fontWeight: 'bold', 
+               fontSize: 11
+             }}>
+                {isMercadoOrder ? '🛒 MULTI-MERCADO' : (isDirectPurchase ? '🔴 COMPRA DIRECTA' : (isPendingAtCommerce ? '⏳ ESPERANDO' : '👨‍🍳 COCINANDO'))}
              </Text>
           </View>
         </View>
@@ -138,7 +148,9 @@ const AvailableOrdersScreen = () => {
         <View style={styles.cardBody}>
             <View style={styles.row}>
                 <Ionicons name="location-outline" size={16} color="#666" />
-                <Text style={styles.addressText} numberOfLines={2}>{item.commerce_address}</Text>
+                <Text style={styles.addressText} numberOfLines={2}>
+                  {isMercadoOrder ? 'Múltiples establecimientos en el Mercado' : item.commerce_address}
+                </Text>
             </View>
             <View style={styles.row}>
                 <Ionicons name="cash-outline" size={16} color="green" />
@@ -150,7 +162,7 @@ const AvailableOrdersScreen = () => {
             style={[
               styles.acceptButton, 
               { 
-                backgroundColor: isPendingAtCommerce ? PENDING_COLOR : THEME_COLOR,
+                backgroundColor: isMercadoOrder ? '#8E44AD' : (isDirectPurchase ? '#E74C3C' : (isPendingAtCommerce ? PENDING_COLOR : THEME_COLOR)),
                 opacity: acceptingOrderId === item.id ? 0.6 : 1
               }
             ]}
@@ -162,7 +174,9 @@ const AvailableOrdersScreen = () => {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.acceptButtonText}>{isPendingAtCommerce ? 'ACEPTAR Y AVISAR AL LOCAL' : 'ACEPTAR VIAJE'}</Text>
+                <Text style={styles.acceptButtonText}>
+                  {isMercadoOrder ? 'ACEPTAR COMPRA EN MERCADO' : (isDirectPurchase ? 'ACEPTAR COMPRA DIRECTA' : (isPendingAtCommerce ? 'ACEPTAR Y AVISAR AL LOCAL' : 'ACEPTAR VIAJE'))}
+                </Text>
                 <Ionicons name="arrow-forward-circle" size={24} color="#fff" style={{marginLeft: 10}} />
               </>
             )}
@@ -170,7 +184,6 @@ const AvailableOrdersScreen = () => {
       </View>
     );
   };
-
   // --- VISTA DE BLOQUEO POR DEUDA ---
   const currentDebt = user?.amount_to_deliver ? parseFloat(user.amount_to_deliver) : 0;
   if (user && currentDebt >= 400) {
