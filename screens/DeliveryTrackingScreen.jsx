@@ -292,7 +292,8 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
         "💳 Pago al Comercio",
         `Resumen de cuenta:\n\n` +
         `Subtotal productos: $${subtotal.toFixed(2)}\n\n` +
-        `PAGAR AL LOCAL: $${totalAPagarAlLocal.toFixed(2)}\n\n` +
+        `PAGAR AL LOCAL: $${totalAPagarAlLocal.toFixed(2)} (PRECIO COMPLETO DEL PRODUCTO)\n\n` +
+        `* Nota: Debes pagar el valor total del producto al comercio, sin descontar ninguna comisión de plataforma.\n\n` +
         `¿Confirmas que ya pagaste esta cantidad al comercio?`,
         [
           { text: "Cancelar", style: "cancel" },
