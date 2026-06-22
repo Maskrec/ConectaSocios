@@ -92,8 +92,10 @@ const MapScreen = () => {
         provider={PROVIDER_GOOGLE}
         customMapStyle={mapStyle} // Estilo opcional para limpiar el mapa (ver abajo)
       >
-        {commerces.map((commerce) => (
-            commerce.latitude && commerce.longitude && (
+        {commerces.map((commerce) => {
+            const isMercado = commerce.approved_for_mercado;
+            const markerBgColor = isMercado && commerce.mercado_category_color ? commerce.mercado_category_color : THEME_COLOR;
+            return commerce.latitude && commerce.longitude && (
                 <Marker
                     key={commerce.id}
                     coordinate={{
@@ -101,11 +103,11 @@ const MapScreen = () => {
                         longitude: parseFloat(commerce.longitude)
                     }}
                     title={commerce.name}
-                    description="Punto de alta demanda"
+                    description={isMercado ? `Mercado (${commerce.mercado_section_name || 'General'})` : "Punto de alta demanda"}
                 >
-                    {/* Marcador Personalizado Índigo */}
+                    {/* Marcador Personalizado */}
                     <View style={styles.markerContainer}>
-                        <View style={styles.markerIconBg}>
+                        <View style={[styles.markerIconBg, { backgroundColor: markerBgColor }]}>
                             <Ionicons
                                 name={commerce.category_icon || 'restaurant'}
                                 size={16}
@@ -113,18 +115,20 @@ const MapScreen = () => {
                             />
                         </View>
                         {/* Triangulito inferior del marcador */}
-                        <View style={styles.markerArrow} />
+                        <View style={[styles.markerArrow, { borderTopColor: markerBgColor }]} />
                     </View>
 
                     <Callout tooltip>
                         <View style={styles.calloutContainer}>
                             <Text style={styles.calloutTitle}>{commerce.name}</Text>
-                            <Text style={styles.calloutDesc}>Zona activa</Text>
+                            <Text style={[styles.calloutDesc, { color: markerBgColor }]}>
+                              {isMercado ? `Mercado: ${commerce.mercado_section_name || 'General'}` : "Zona activa"}
+                            </Text>
                         </View>
                     </Callout>
                 </Marker>
-            )
-        ))}
+            );
+        })}
       </MapView>
 
       {/* Botón Flotante: Centrar Ubicación */}
@@ -142,7 +146,7 @@ const MapScreen = () => {
             </View>
          </View>
          <Text style={styles.legendText}>
-            Los iconos azules indican zonas con restaurantes activos. Ubícate cerca de ellos para recibir pedidos más rápido.
+            Los iconos azules indican restaurantes activos. Los iconos de otros colores representan establecimientos del Mercado. Ubícate cerca para recibir pedidos rápido.
          </Text>
       </View>
     </View>

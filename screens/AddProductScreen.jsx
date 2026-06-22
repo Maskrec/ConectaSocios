@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../api';
 import { Ionicons } from '@expo/vector-icons';
 import Alert from '../components/AlertPolyfill';
+import { useAuth } from '../context/AuthContext';
 
 // --- PALETA DE COLORES COMERCIO ---
 const THEME_COLOR = '#1ABC9C';      // Ocean Teal (Principal)
@@ -25,6 +26,7 @@ const THEME_BORDER = '#A3E4D7';     // Borde suave
 const THEME_DISABLED = '#A2D9CE';   // Color para estados deshabilitados
 
 const AddProductScreen = ({ navigation }) => {
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
@@ -37,6 +39,7 @@ const AddProductScreen = ({ navigation }) => {
 
   // Estado para el interruptor
   const [isCustomizable, setIsCustomizable] = useState(false);
+  const [saleLocation, setSaleLocation] = useState('feed');
 
   const [loading, setLoading] = useState(false);
 
@@ -70,6 +73,7 @@ const AddProductScreen = ({ navigation }) => {
 
     // Enviamos el valor del Switch
     formData.append('is_customizable', isCustomizable);
+    formData.append('sale_location', saleLocation);
 
     if (image) {
       const filename = image.split('/').pop();
@@ -122,6 +126,7 @@ const AddProductScreen = ({ navigation }) => {
                 value={name}
                 onChangeText={setName}
                 placeholder="Ej. Hamburguesa Doble"
+                placeholderTextColor="#999"
               />
             </View>
 
@@ -151,6 +156,7 @@ const AddProductScreen = ({ navigation }) => {
                 onChangeText={setPrice}
                 keyboardType="numeric"
                 placeholder="0.00"
+                placeholderTextColor="#999"
               />
             </View>
 
@@ -158,10 +164,10 @@ const AddProductScreen = ({ navigation }) => {
             {unitType !== 'unit' && (
               <View style={styles.row}>
                 <View style={[styles.inputContainer, {flex: 1, marginRight: 5}]}>
-                  <TextInput style={styles.input} placeholder="Mínimo (ej. 0.5)" value={minWeight} onChangeText={setMinWeight} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder="Mínimo (ej. 0.5)" placeholderTextColor="#999" value={minWeight} onChangeText={setMinWeight} keyboardType="numeric" />
                 </View>
                 <View style={[styles.inputContainer, {flex: 1, marginLeft: 5}]}>
-                  <TextInput style={styles.input} placeholder="Máximo (ej. 5)" value={maxWeight} onChangeText={setMaxWeight} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder="Máximo (ej. 5)" placeholderTextColor="#999" value={maxWeight} onChangeText={setMaxWeight} keyboardType="numeric" />
                 </View>
               </View>
             )}
@@ -176,8 +182,36 @@ const AddProductScreen = ({ navigation }) => {
                 onChangeText={setDescription}
                 multiline
                 placeholder="Ingredientes, tamaño, detalles..."
+                placeholderTextColor="#999"
               />
             </View>
+
+            {/* Selector de Ubicación de Venta (Solo si el comercio está aprobado para Mercado) */}
+            {user?.approved_for_mercado ? (
+              <>
+                <Text style={styles.label}>Destino de Venta (Mercado)</Text>
+                <View style={styles.unitTypeContainer}>
+                  <TouchableOpacity
+                    style={[styles.unitBtn, saleLocation === 'feed' && styles.unitBtnActive]}
+                    onPress={() => setSaleLocation('feed')}
+                  >
+                    <Text style={[styles.unitBtnText, saleLocation === 'feed' && styles.unitBtnTextActive]}>Solo Feed</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.unitBtn, saleLocation === 'mercado' && styles.unitBtnActive]}
+                    onPress={() => setSaleLocation('mercado')}
+                  >
+                    <Text style={[styles.unitBtnText, saleLocation === 'mercado' && styles.unitBtnTextActive]}>Solo Mercado</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.unitBtn, saleLocation === 'both' && styles.unitBtnActive]}
+                    onPress={() => setSaleLocation('both')}
+                  >
+                    <Text style={[styles.unitBtnText, saleLocation === 'both' && styles.unitBtnTextActive]}>Ambos</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
 
             {/* --- SWITCH DE PERSONALIZACIÓN (Estilo Teal) --- */}
             <View style={styles.switchContainer}>

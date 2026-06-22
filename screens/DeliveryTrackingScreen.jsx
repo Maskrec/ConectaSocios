@@ -50,6 +50,10 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   const [sysConfig, setSysConfig] = useState(null);
   const mapRef = useRef(null);
 
+  // Estados de filtros de Mercado
+  const [selectedSectionId, setSelectedSectionId] = useState(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+
   // Obtener comercios únicos involucrados en el pedido de mercado
   const getUniqueCommerces = (items) => {
     if (!items) return [];
@@ -71,6 +75,60 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
     });
     return Object.values(unique);
   };
+
+  // Obtener secciones únicas en la orden
+  const getSectionsInOrder = (items) => {
+    if (!items) return [];
+    const sections = {};
+    items.forEach(item => {
+      if (item.mercado_section_id) {
+        sections[item.mercado_section_id] = item.mercado_section_name || 'Otros';
+      }
+    });
+    return Object.entries(sections).map(([id, name]) => ({ id: parseInt(id), name }));
+  };
+
+  // Obtener categorías únicas en la orden
+  const getCategoriesInOrder = (items, sectionId) => {
+    if (!items) return [];
+    const categories = {};
+    items.forEach(item => {
+      if (item.mercado_category_id && (!sectionId || item.mercado_section_id === sectionId)) {
+        categories[item.mercado_category_id] = {
+          name: item.mercado_category_name || 'General',
+          sectionId: item.mercado_section_id
+        };
+      }
+    });
+    return Object.entries(categories).map(([id, cat]) => ({ id: parseInt(id), name: cat.name, sectionId: cat.sectionId }));
+  };
+
+  const handleSelectSection = (sectionId) => {
+    if (selectedSectionId === sectionId) {
+      setSelectedSectionId(null);
+      setSelectedCategoryId(null);
+    } else {
+      setSelectedSectionId(sectionId);
+      setSelectedCategoryId(null);
+    }
+  };
+
+  const handleSelectCategory = (categoryId) => {
+    if (selectedCategoryId === categoryId) {
+      setSelectedCategoryId(null);
+    } else {
+      setSelectedCategoryId(categoryId);
+    }
+  };
+
+  // Filtrado de items por sección/categoría
+  const filteredItems = order?.items ? order.items.filter(item => {
+    if (selectedSectionId && item.mercado_section_id !== selectedSectionId) return false;
+    if (selectedCategoryId && item.mercado_category_id !== selectedCategoryId) return false;
+    return true;
+  }) : [];
+
+  const filteredCommerces = getUniqueCommerces(filteredItems);
 
   const handleUpdateItemStatus = async (itemId, status) => {
     try {
@@ -162,10 +220,11 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
       if (order.status === 'accepted') {
         // Fase 1: Ir al comercio
         if (order.is_mercado) {
-          const uniqueCommerces = getUniqueCommerces(order.items);
-          if (uniqueCommerces.length > 0) {
-            targetLat = uniqueCommerces[0].latitude;
-            targetLon = uniqueCommerces[0].longitude;
+          const uniqueComms = getUniqueCommerces(order.items);
+          const activeComms = filteredCommerces.length > 0 ? filteredCommerces : uniqueComms;
+          if (activeComms.length > 0) {
+            targetLat = activeComms[0].latitude;
+            targetLon = activeComms[0].longitude;
           }
         } else if (order.commerce) {
           targetLat = parseFloat(order.commerce.latitude);
@@ -185,7 +244,7 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
         setDistanceToTarget(dist);
       }
     }
-  }, [courierLocation, order]);
+  }, [courierLocation, order, selectedSectionId, selectedCategoryId]);
 
   // --- ACCIONES DEL REPARTIDOR ---
 
@@ -293,6 +352,7 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   }
 
   const uniqueCommerces = getUniqueCommerces(order.items);
+  const activeCommerces = filteredCommerces.length > 0 ? filteredCommerces : uniqueCommerces;
   const isPickupPhase = order.status === 'accepted';
 
   // Validar coordenadas antes de pintar mapa
@@ -308,8 +368,8 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
 
   // Definir destino actual según fase
   const targetLoc = isPickupPhase
-    ? (order.is_mercado && uniqueCommerces.length > 0
-        ? { latitude: uniqueCommerces[0].latitude, longitude: uniqueCommerces[0].longitude }
+    ? (order.is_mercado && activeCommerces.length > 0
+        ? { latitude: activeCommerces[0].latitude, longitude: activeCommerces[0].longitude }
         : { latitude: parseFloat(order.commerce.latitude), longitude: parseFloat(order.commerce.longitude) })
     : { latitude: parseFloat(order.delivery_address.latitude), longitude: parseFloat(order.delivery_address.longitude) };
 
@@ -318,7 +378,7 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
     : order.customer_name;
 
   const targetAddress = isPickupPhase
-    ? (order.is_mercado ? `${uniqueCommerces.length} locales comerciales` : order.commerce.address)
+    ? (order.is_mercado ? `${activeCommerces.length} locales comerciales` : order.commerce.address)
     : order.delivery_address.address_string;
 
   return (
@@ -346,7 +406,7 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
              </View>
           </Marker>
         ) : (
-          uniqueCommerces.map((comm, idx) => (
+          filteredCommerces.map((comm, idx) => (
             <Marker
               key={`comm-marker-${idx}`}
               coordinate={{ latitude: comm.latitude, longitude: comm.longitude }}
@@ -436,12 +496,65 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
            </View>
         </View>
 
+        {/* Filtros en Cascada (Fase de Recogida - Mercado) */}
+        {order.is_mercado && isPickupPhase && (
+          <View style={styles.filterContainer}>
+            <Text style={styles.filterTitle}>Filtrar por Sección/Categoría:</Text>
+            
+            {/* Fila de Secciones */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+              <TouchableOpacity
+                style={[styles.filterChip, !selectedSectionId && styles.filterChipActive]}
+                onPress={() => handleSelectSection(null)}
+              >
+                <Text style={[styles.filterChipText, !selectedSectionId && styles.filterChipTextActive]}>Todas</Text>
+              </TouchableOpacity>
+              {getSectionsInOrder(order.items).map((section) => (
+                <TouchableOpacity
+                  key={`sec-${section.id}`}
+                  style={[styles.filterChip, selectedSectionId === section.id && styles.filterChipActive]}
+                  onPress={() => handleSelectSection(section.id)}
+                >
+                  <Text style={[styles.filterChipText, selectedSectionId === section.id && styles.filterChipTextActive]}>
+                    {section.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Fila de Categorías (Sólo si hay una sección seleccionada) */}
+            {selectedSectionId && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterRow, { marginTop: 8 }]}>
+                <TouchableOpacity
+                  style={[styles.subFilterChip, !selectedCategoryId && styles.subFilterChipActive]}
+                  onPress={() => handleSelectCategory(null)}
+                >
+                  <Text style={[styles.subFilterChipText, !selectedCategoryId && styles.subFilterChipTextActive]}>
+                    Todo {getSectionsInOrder(order.items).find(s => s.id === selectedSectionId)?.name}
+                  </Text>
+                </TouchableOpacity>
+                {getCategoriesInOrder(order.items, selectedSectionId).map((cat) => (
+                  <TouchableOpacity
+                    key={`cat-${cat.id}`}
+                    style={[styles.subFilterChip, selectedCategoryId === cat.id && styles.subFilterChipActive]}
+                    onPress={() => handleSelectCategory(cat.id)}
+                  >
+                    <Text style={[styles.subFilterChipText, selectedCategoryId === cat.id && styles.subFilterChipTextActive]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        )}
+
         {/* Checklist del Repartidor para Pedidos de Mercado en recogida */}
         {order.is_mercado && isPickupPhase && (
           <View style={styles.checklistContainer}>
-            <Text style={styles.checklistTitle}>Lista de Compras del Mercado:</Text>
+            <Text style={styles.checklistTitle}>Lista de Compras del Mercado ({filteredItems.length} items):</Text>
             <ScrollView style={styles.checklistScroll} nestedScrollEnabled={true}>
-              {(order.items || []).map((item) => {
+              {filteredItems.map((item) => {
                 const isPurchased = item.purchase_status === 'purchased';
                 const isUnavailable = item.purchase_status === 'unavailable';
 
@@ -457,6 +570,11 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
                           Cant: {item.weight_purchased ? `${item.weight_purchased} kg` : item.quantity}
                         </Text>
                       </View>
+
+                      {/* Directiva de Guiado en español */}
+                      <Text style={styles.itemInstruction}>
+                        👉 Ve al mostrador de <Text style={{fontWeight: 'bold'}}>{item.commerce_name || 'Mercado'}</Text> y solicita <Text style={{fontWeight: 'bold'}}>{item.quantity} {item.product?.unit_type && item.product.unit_type !== 'unit' ? (item.product.unit_type === 'kg' ? 'kilo(s)' : item.product.unit_type === 'liter' ? 'litro(s)' : item.product.unit_type) : 'pza(s)'}</Text> de <Text style={{fontWeight: 'bold'}}>{item.product_name}</Text>.
+                      </Text>
                     </View>
 
                     <View style={styles.itemActions}>
@@ -679,6 +797,74 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     backgroundColor: '#BDC3C7',
+  },
+  filterContainer: {
+    marginTop: 5,
+    marginBottom: 10,
+  },
+  filterTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 6,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  filterChip: {
+    backgroundColor: '#F0F0F8',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E2E2F0',
+  },
+  filterChipActive: {
+    backgroundColor: THEME_COLOR,
+    borderColor: THEME_COLOR,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+  subFilterChip: {
+    backgroundColor: '#FFF0F0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#FFD3D3',
+  },
+  subFilterChipActive: {
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF6B6B',
+  },
+  subFilterChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#E74C3C',
+  },
+  subFilterChipTextActive: {
+    color: '#fff',
+  },
+  itemInstruction: {
+    fontSize: 12,
+    color: '#D35400',
+    fontStyle: 'italic',
+    marginTop: 6,
+    backgroundColor: '#FDF6ED',
+    padding: 6,
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F39C12',
   },
 });
 

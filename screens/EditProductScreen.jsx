@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../api';
 import { Ionicons } from '@expo/vector-icons';
 import Alert from '../components/AlertPolyfill';
+import { useAuth } from '../context/AuthContext';
 
 // --- PALETA COMERCIO (Ocean Teal) ---
 const THEME_COLOR = '#1ABC9C';
@@ -26,6 +27,7 @@ const DANGER_COLOR = '#E74C3C';
 
 const EditProductScreen = ({ route, navigation }) => {
   const { productId } = route.params;
+  const { user } = useAuth();
 
   // Estados
   const [name, setName] = useState('');
@@ -41,6 +43,7 @@ const EditProductScreen = ({ route, navigation }) => {
   // Switches
   const [isAvailable, setIsAvailable] = useState(true);
   const [isCustomizable, setIsCustomizable] = useState(false); // Agregamos este para consistencia
+  const [saleLocation, setSaleLocation] = useState('feed');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -65,6 +68,7 @@ const EditProductScreen = ({ route, navigation }) => {
         setIsAvailable(p.is_available);
         // Si tu backend ya devuelve esto, lo seteamos. Si no, por defecto false.
         setIsCustomizable(p.is_customizable || false);
+        setSaleLocation(p.sale_location || 'feed');
       } catch (error) {
         Alert.alert("Error", "No se pudo cargar el producto.");
         navigation.goBack();
@@ -91,6 +95,7 @@ const EditProductScreen = ({ route, navigation }) => {
     formData.append('description', description);
     formData.append('is_available', isAvailable);
     formData.append('is_customizable', isCustomizable);
+    formData.append('sale_location', saleLocation);
 
     formData.append('unit_type', unitType);
     
@@ -205,10 +210,10 @@ const EditProductScreen = ({ route, navigation }) => {
             {unitType !== 'unit' && (
               <View style={styles.row}>
                 <View style={[styles.inputContainer, {flex: 1, marginRight: 5}]}>
-                  <TextInput style={styles.input} placeholder="Mínimo (ej. 0.5)" value={minWeight} onChangeText={setMinWeight} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder="Mínimo (ej. 0.5)" placeholderTextColor="#999" value={minWeight} onChangeText={setMinWeight} keyboardType="numeric" />
                 </View>
                 <View style={[styles.inputContainer, {flex: 1, marginLeft: 5}]}>
-                  <TextInput style={styles.input} placeholder="Máximo (ej. 5)" value={maxWeight} onChangeText={setMaxWeight} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder="Máximo (ej. 5)" placeholderTextColor="#999" value={maxWeight} onChangeText={setMaxWeight} keyboardType="numeric" />
                 </View>
               </View>
             )}
@@ -216,8 +221,35 @@ const EditProductScreen = ({ route, navigation }) => {
             <Text style={styles.label}>Descripción</Text>
             <View style={[styles.inputContainer, {height: 80, alignItems: 'flex-start', paddingTop: 10}]}>
               <Ionicons name="document-text-outline" size={20} color="#666" style={{marginRight: 10, marginTop: 2}} />
-              <TextInput style={[styles.input, {height: 60}]} value={description} onChangeText={setDescription} multiline />
+              <TextInput style={[styles.input, {height: 60}]} value={description} onChangeText={setDescription} multiline placeholder="Descripción opcional" placeholderTextColor="#999" />
             </View>
+
+            {/* Selector de Ubicación de Venta (Solo si el comercio está aprobado para Mercado) */}
+            {user?.approved_for_mercado ? (
+              <>
+                <Text style={styles.label}>Destino de Venta (Mercado)</Text>
+                <View style={styles.unitTypeContainer}>
+                  <TouchableOpacity
+                    style={[styles.unitBtn, saleLocation === 'feed' && styles.unitBtnActive]}
+                    onPress={() => setSaleLocation('feed')}
+                  >
+                    <Text style={[styles.unitBtnText, saleLocation === 'feed' && styles.unitBtnTextActive]}>Solo Feed</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.unitBtn, saleLocation === 'mercado' && styles.unitBtnActive]}
+                    onPress={() => setSaleLocation('mercado')}
+                  >
+                    <Text style={[styles.unitBtnText, saleLocation === 'mercado' && styles.unitBtnTextActive]}>Solo Mercado</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.unitBtn, saleLocation === 'both' && styles.unitBtnActive]}
+                    onPress={() => setSaleLocation('both')}
+                  >
+                    <Text style={[styles.unitBtnText, saleLocation === 'both' && styles.unitBtnTextActive]}>Ambos</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
 
             {/* --- SWITCHES DE ESTADO --- */}
 
