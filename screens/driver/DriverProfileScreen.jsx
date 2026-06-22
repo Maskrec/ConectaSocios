@@ -146,10 +146,16 @@ const DriverProfileScreen = ({ navigation }) => {
       // formDataToSend.append('vehicle_registration', formData.vehicle_registration);
 
       if (profileImage) {
-        const filename = profileImage.split('/').pop();
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image/jpeg`;
-        formDataToSend.append('profile_image', { uri: profileImage, name: filename, type });
+        if (Platform.OS === 'web') {
+          const response = await fetch(profileImage);
+          const blob = await response.blob();
+          formDataToSend.append('profile_image', blob, 'profile.jpg');
+        } else {
+          const filename = profileImage.split('/').pop();
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : `image/jpeg`;
+          formDataToSend.append('profile_image', { uri: profileImage, name: filename, type });
+        }
       }
 
       const response = await apiClient.patch('/auth/perfil-conductor/', formDataToSend, {

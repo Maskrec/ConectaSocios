@@ -124,10 +124,16 @@ const CommerceProfileScreen = () => {
 
   const uploadUserImage = async (uri) => {
       const formData = new FormData();
-      const filename = uri.split('/').pop();
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
-      formData.append('profile_image', { uri, name: filename, type });
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        formData.append('profile_image', blob, 'profile.jpg');
+      } else {
+        const filename = uri.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        formData.append('profile_image', { uri, name: filename, type });
+      }
       try {
         const response = await apiClient.patch('/perfil/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
         setUser(response.data); // Actualizar contexto
@@ -137,10 +143,16 @@ const CommerceProfileScreen = () => {
 
   const uploadCommerceLogo = async (uri) => {
       const formData = new FormData();
-      const filename = uri.split('/').pop();
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
-      formData.append('logo', { uri, name: filename, type });
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        formData.append('logo', blob, 'logo.jpg');
+      } else {
+        const filename = uri.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        formData.append('logo', { uri, name: filename, type });
+      }
       try {
         const response = await apiClient.patch('/mi-comercio/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
         setCommerceData(prev => ({ ...prev, logo: response.data.logo }));

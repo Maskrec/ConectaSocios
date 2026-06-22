@@ -92,7 +92,17 @@ const ProfileScreen = () => {
   const uploadImage = async (uri) => {
     setUploading(true);
     const formData = new FormData();
-    formData.append('profile_image', { uri: uri, name: 'profile.jpg', type: 'image/jpeg' });
+    if (Platform.OS === 'web') {
+      try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        formData.append('profile_image', blob, 'profile.jpg');
+      } catch (err) {
+        console.error("Blob conversion error:", err);
+      }
+    } else {
+      formData.append('profile_image', { uri: uri, name: 'profile.jpg', type: 'image/jpeg' });
+    }
     try {
       const response = await apiClient.patch('/auth/perfil/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setUser(response.data);

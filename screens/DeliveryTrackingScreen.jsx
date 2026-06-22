@@ -268,8 +268,8 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   const handlePickUp = async () => {
       if (!order.is_mercado && !distanceToTarget) return;
 
-      // Geocerca: Debe estar a menos de 50 metros del comercio (ajustado de 10m para evitar errores GPS)
-      if (!order.is_mercado && distanceToTarget > 50) {
+      // Geocerca: Debe estar a menos de 10 metros del comercio
+      if (!order.is_mercado && distanceToTarget > 10) {
         Alert.alert("Aún estás lejos", `Debes estar en el comercio. Estás a ${Math.round(distanceToTarget)}m.`);
         return;
       }
@@ -317,8 +317,8 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
 
   const handleCompleteDelivery = () => {
     if (!distanceToTarget) return;
-    // Geocerca: Debe estar a menos de 40 metros del cliente
-    if (distanceToTarget > 25) {
+    // Geocerca: Debe estar a menos de 10 metros del cliente
+    if (distanceToTarget > 10) {
       Alert.alert("Aún estás lejos", `Acércate a la ubicación de entrega. Estás a ${Math.round(distanceToTarget)}m.`);
       return;
     }
@@ -633,8 +633,8 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
                     {order.is_mercado && order.items?.some(item => item.purchase_status === 'pending') ? (
                         <Text style={styles.geofenceText}>Registra todos los productos primero</Text>
                     ) : (
-                        (!distanceToTarget || distanceToTarget > 50) && !order.is_mercado && (
-                            <Text style={styles.geofenceText}>Acércate al local para activar</Text>
+                        (!distanceToTarget || distanceToTarget > 10) && !order.is_mercado && (
+                            <Text style={styles.geofenceText}>Acércate al local para activar (rango 10m)</Text>
                         )
                     )}
                 </TouchableOpacity>

@@ -76,10 +76,16 @@ const AddProductScreen = ({ navigation }) => {
     formData.append('sale_location', saleLocation);
 
     if (image) {
-      const filename = image.split('/').pop();
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
-      formData.append('image', { uri: image, name: filename, type });
+      if (Platform.OS === 'web') {
+        const response = await fetch(image);
+        const blob = await response.blob();
+        formData.append('image', blob, 'product.jpg');
+      } else {
+        const filename = image.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        formData.append('image', { uri: image, name: filename, type });
+      }
     }
 
     try {

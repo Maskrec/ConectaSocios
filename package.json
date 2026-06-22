@@ -1,7 +1,7 @@
 {
   "name": "app-repartidor",
   "license": "0BSD",
-  "version": "1.0.0",
+  "version": "2.0.7",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
