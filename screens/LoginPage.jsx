@@ -14,6 +14,7 @@ const WHATSAPP_NUMBER = '524463168380'; // Número de WhatsApp del soporte (con 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showInactiveModal, setShowInactiveModal] = useState(false);
@@ -92,8 +93,15 @@ const LoginPage = () => {
                 style={styles.input}
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={!showPassword}
               />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 5 }}>
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#999"
+                />
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity

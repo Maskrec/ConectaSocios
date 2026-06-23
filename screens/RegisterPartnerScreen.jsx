@@ -23,6 +23,7 @@ const RegisterPartnerScreen = () => {
   const [role, setRole] = useState('courier');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: '', password: '', first_name: '', last_name: '', phone_number: '',
     car_brand: '', car_model: '', license_plate: '', is_taxi_driver: false
@@ -185,15 +186,29 @@ const RegisterPartnerScreen = () => {
 
             <View style={styles.inputContainer}>
               <Ionicons name="person-outline" size={20} color="gray" style={styles.icon} />
-              <TextInput placeholder="Nombre de Usuario" style={styles.input} autoCapitalize="none" onChangeText={(t) => handleChange('username', t)} />
+              <TextInput placeholder="Nombre de Usuario" style={styles.input} autoCapitalize="none" onChangeText={(t) => handleChange('username', t)} value={formData.username} />
             </View>
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="gray" style={styles.icon} />
-              <TextInput placeholder="Contraseña" style={styles.input} secureTextEntry onChangeText={(t) => handleChange('password', t)} />
+              <TextInput placeholder="Contraseña" style={styles.input} secureTextEntry={!showPassword} onChangeText={(t) => handleChange('password', t)} value={formData.password} />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 5 }}>
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="gray"
+                />
+              </TouchableOpacity>
             </View>
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="gray" style={styles.icon} />
-              <TextInput placeholder="Confirmar Contraseña" style={styles.input} secureTextEntry onChangeText={setConfirmPassword} />
+              <TextInput placeholder="Confirmar Contraseña" style={styles.input} secureTextEntry={!showPassword} onChangeText={setConfirmPassword} value={confirmPassword} />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 5 }}>
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="gray"
+                />
+              </TouchableOpacity>
             </View>
             <View style={styles.row}>
               <View style={[styles.inputContainer, {flex: 1, marginRight: 5}]}>
