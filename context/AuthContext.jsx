@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SecureStorage from '../services/SecureStorage';
@@ -8,58 +8,126 @@ import CONFIG from '../config';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Alert from '../components/AlertPolyfill';
+import { navigationRef } from '../App';
 
 const API_URL = CONFIG.API_URL;
 
 const AuthContext = createContext(null);
 
-// Configuración global de notificaciones
-/*Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});*/
+// Configuración global de notificaciones para móviles nativos
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [authToken, setAuthToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [role, setRole] = useState(null);
+  const lastWebItemsRef = useRef([]);
+
+  // Helper para mostrar notificaciones nativas en el navegador (Web)
+  const showWebNotification = (title, body, data = {}) => {
+    if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'granted') {
+      const notification = new window.Notification(title, {
+        body: body,
+        icon: '/favicon.ico'
+      });
+      notification.onclick = () => {
+        window.focus();
+        try {
+          if (navigationRef.isReady()) {
+            if (data.order_id) {
+              if (role === 'owner') {
+                navigationRef.navigate('CommerceOrderDetail', { orderId: data.order_id });
+              } else if (role === 'courier') {
+                navigationRef.navigate('DeliveryTracking', { orderId: data.order_id });
+              }
+            } else if (data.trip_id) {
+              if (role === 'driver') {
+                navigationRef.navigate('MainDriver', {
+                  screen: 'TripActual',
+                  params: { tripId: data.trip_id }
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error al redireccionar al presionar la notificación web:", err);
+        }
+      };
+      
+      // Sonido en la web
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-500.wav');
+        audio.play();
+      } catch (e) {
+        console.log('Audio playback blocked or failed:', e);
+      }
+    }
+  };
 
   // --- FUNCIÓN PARA REGISTRAR NOTIFICACIONES ---
   const registerForPushNotificationsAsync = async () => {
-    console.log("Notificaciones desactivadas temporalmente para debugging");
-      return null;
-    let token;
-    if (Device.isDevice) {
+    try {
+      if (Platform.OS === 'web') {
+        if ('Notification' in window) {
+          const permission = await Notification.requestPermission();
+          console.log('Permisos de notificación en navegador web:', permission);
+        }
+        return null;
+      }
+
+      if (!Device.isDevice) {
+        console.log('⚠️ Se necesita un dispositivo físico para notificaciones Push');
+        return null;
+      }
+
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
+
       if (finalStatus !== 'granted') {
         Alert.alert('Permiso denegado', 'No se pudieron activar las notificaciones push.');
-        return;
+        return null;
       }
-      token = (await Notifications.getExpoPushTokenAsync()).data;
+
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+          sound: 'default',
+        });
+      }
+
+      const token = (await Notifications.getExpoPushTokenAsync()).data;
 
       // ENVÍA EL TOKEN AL BACKEND
       if (token) {
         try {
-          // Usamos apiClient porque ya tiene el header de autorización
           await apiClient.post('/guardar-token/', { token });
           console.log("Token push guardado con éxito:", token);
         } catch (error) {
           console.error("Error guardando token push:", error);
         }
       }
-    } else {
-      console.log('Se necesita un dispositivo físico para notificaciones Push');
+      return token;
+    } catch (error) {
+      console.error('❌ Error en registro de notificaciones:', error);
+      return null;
     }
-    return token;
   };
 
   // --- EFFECT: CARGAR TOKEN AL INICIO ---
@@ -94,10 +162,138 @@ export const AuthProvider = ({ children }) => {
   // --- EFFECT: REGISTRAR NOTIFICACIONES CUANDO HAY TOKEN ---
   useEffect(() => {
     if (authToken) {
-      // registerForPushNotificationsAsync();
+      registerForPushNotificationsAsync();
     }
   }, [authToken]);
 
+  // --- EFFECT: WEBSOCKET / POLLING DE NOTIFICACIONES EN WEB ---
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !authToken || !role) return;
+
+    const checkWebNotifications = async () => {
+      try {
+        if (role === 'owner') {
+          // Comercio: buscar nuevos pedidos pendientes
+          const response = await apiClient.get('/mis-pedidos-comercio/');
+          const orders = response.data || [];
+          const pendingOrders = orders.filter(o => o.status === 'pending');
+          
+          if (pendingOrders.length > 0) {
+            // Comparar con el último chequeo
+            const newOrders = pendingOrders.filter(
+              o => !lastWebItemsRef.current.some(prev => prev.id === o.id)
+            );
+            if (newOrders.length > 0) {
+              const firstOrder = newOrders[0];
+              showWebNotification(
+                '¡Nuevo Pedido Recibido! 🛍️',
+                `Pedido de ${firstOrder.customer_name || 'un cliente'} por $${firstOrder.total || 0}.`,
+                { order_id: firstOrder.id }
+              );
+            }
+          }
+          lastWebItemsRef.current = pendingOrders;
+        } else if (role === 'courier') {
+          // Repartidor: buscar pedidos disponibles
+          const response = await apiClient.get('/pedidos/disponibles/');
+          const orders = Array.isArray(response.data) ? response.data : (response.data.results || []);
+          
+          if (orders.length > 0) {
+            const newOrders = orders.filter(
+              o => !lastWebItemsRef.current.some(prev => prev.id === o.id)
+            );
+            if (newOrders.length > 0) {
+              const firstOrder = newOrders[0];
+              showWebNotification(
+                'Nuevo Pedido Disponible 📦',
+                `Pedido listo en ${firstOrder.commerce?.name || 'Comercio'}.`,
+                { order_id: firstOrder.id }
+              );
+            }
+          }
+          lastWebItemsRef.current = orders;
+        } else if (role === 'driver') {
+          // Chofer/Taxi: buscar viajes disponibles
+          const response = await apiClient.get('/viajes/disponibles-driver/');
+          const trips = Array.isArray(response.data) ? response.data : (response.data.results || []);
+          
+          if (trips.length > 0) {
+            const newTrips = trips.filter(
+              t => !lastWebItemsRef.current.some(prev => prev.id === t.id)
+            );
+            if (newTrips.length > 0) {
+              const firstTrip = newTrips[0];
+              showWebNotification(
+                'Nuevo Viaje Disponible 🚖',
+                `Viaje de ${firstTrip.distance_km}km por $${firstTrip.estimated_price}.`,
+                { trip_id: firstTrip.id }
+              );
+            }
+          }
+          lastWebItemsRef.current = trips;
+        }
+      } catch (err) {
+        console.error('Error al consultar notificaciones en web:', err);
+      }
+    };
+
+    // Ejecutar inicial y luego cada 30 segundos
+    checkWebNotifications();
+    const interval = setInterval(checkWebNotifications, 30000);
+    return () => {
+      clearInterval(interval);
+      lastWebItemsRef.current = [];
+    };
+  }, [authToken, role]);
+
+  // --- EFFECT: ESCUCHA DE NOTIFICACIONES PUSH (MÓVIL NATIVO) ---
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    // Escucha en primer plano (Foreground)
+    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      console.log('Notificación recibida en primer plano:', notification);
+    });
+
+    // Escucha de tap/click
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Notificación cliqueada:', response);
+      try {
+        const data = response.notification.request.content.data;
+        if (data) {
+          if (data.order_id) {
+            setTimeout(() => {
+              if (navigationRef.isReady()) {
+                if (role === 'owner') {
+                  navigationRef.navigate('CommerceOrderDetail', { orderId: data.order_id });
+                } else if (role === 'courier') {
+                  navigationRef.navigate('DeliveryTracking', { orderId: data.order_id });
+                }
+              }
+            }, 500);
+          } else if (data.trip_id) {
+            setTimeout(() => {
+              if (navigationRef.isReady()) {
+                if (role === 'driver') {
+                  navigationRef.navigate('MainDriver', {
+                    screen: 'TripActual',
+                    params: { tripId: data.trip_id }
+                  });
+                }
+              }
+            }, 500);
+          }
+        }
+      } catch (error) {
+        console.error('Error al manejar click en notificación push:', error);
+      }
+    });
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
+  }, [role]);
 
   // --- FUNCIÓN LOGIN ---
   const login = async (username, password) => {
