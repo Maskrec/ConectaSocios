@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StatusBar,
-  Platform
+  Platform,
+  ScrollView
 } from 'react-native';
 import apiClient from '../api';
 import { useNavigation } from '@react-navigation/native';
@@ -18,10 +19,77 @@ import { Ionicons } from '@expo/vector-icons';
 const THEME_COLOR = '#1ABC9C'; // Ocean Teal
 const THEME_LIGHT = '#E8F8F5';
 
+const normalizeText = (text) => {
+  if (!text) return '';
+  try {
+    return text.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  } catch (e) {
+    return text.toLowerCase();
+  }
+};
+
+const groupProducts = (productsList) => {
+  const groups = {
+    'Promociones': [],
+    'Entradas': [],
+    'Tacos': [],
+    'Hamburguesas': [],
+    'Pizzas': [],
+    'Calzones': [],
+    'Alitas': [],
+    'Pastas': [],
+    'Bebidas': [],
+    'Postres': [],
+    'Otros': []
+  };
+
+  productsList.forEach(product => {
+    const name = normalizeText(product.name || '');
+    
+    if (/prom|comb|paq|descu|especi/i.test(name)) {
+      groups['Promociones'].push(product);
+    } else if (/hamburg|hambur|amborg|burg|doble\s*ques/i.test(name)) {
+      groups['Hamburguesas'].push(product);
+    } else if (/taco|taqu|taki|gring|quesad|kesad|muli|volc|burri|burit/i.test(name)) {
+      groups['Tacos'].push(product);
+    } else if (/calzon|calzong|calzone|calzoni|calzonic|calson|calsone|calsoni|calsson|calssone|calzzone|calzzon/i.test(name)) {
+      groups['Calzones'].push(product);
+    } else if (/pizz|piz|picz|pica|piza/i.test(name)) {
+      groups['Pizzas'].push(product);
+    } else if (/alita|alitta|allita|halit|halita|wing|uings|wins|bonel|bonles|bonele/i.test(name)) {
+      groups['Alitas'].push(product);
+    } else if (/pasta|spaghe|spagu|espague|espagu|fettuc|fetuc|lasagn|lazan|raviol|rabiol|macarron|macaroni|penne|penna|alfredo|bolognes|bolones|carbonara|pesto/i.test(name)) {
+      groups['Pastas'].push(product);
+    } else if (/coca|refres|soda|agua|jugo|hugo|bebid|cerve|cheve|mich|clam|\bte\b|\bcafe\b|caf\b|malte|licua|lata|litro/i.test(name)) {
+      groups['Bebidas'].push(product);
+    } else if (/pastel|pasteli|pasteler|pastit|pay|pie\b|post|flan|elad|helad|crep|dulc|gelat/i.test(name)) {
+      groups['Postres'].push(product);
+    } else if (/papas|nach|dedo|entra|snack|aro/i.test(name)) {
+      groups['Entradas'].push(product);
+    } else {
+      groups['Otros'].push(product);
+    }
+  });
+
+  return groups;
+};
+
 const CommerceProductsScreen = () => {
   const [products, setProducts] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [isLoading, setIsLoading] = useState(true);
   const navigation = useNavigation();
+
+  // Categorización y ordenamiento
+  const grouped = groupProducts(products);
+  const activeCategories = Object.keys(grouped).filter(cat => grouped[cat].length > 0);
+  const showTabs = activeCategories.length > 1;
+
+  const filteredProducts = selectedCategory === 'Todos'
+    ? products
+    : (grouped[selectedCategory] || []);
 
   // Función de carga
   const fetchProducts = async () => {
@@ -47,6 +115,43 @@ const CommerceProductsScreen = () => {
     });
     return unsubscribe;
   }, [navigation]);
+
+  // --- RENDER CATEGORIES TABS ---
+  const renderCategoriesTabs = () => {
+    if (!showTabs) return null;
+    const tabs = ['Todos', ...activeCategories];
+    return (
+      <View style={styles.tabsWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContainer}
+        >
+          {tabs.map((category) => {
+            const isActive = selectedCategory === category;
+            const count = category === 'Todos' ? products.length : grouped[category].length;
+            return (
+              <TouchableOpacity
+                key={category}
+                onPress={() => setSelectedCategory(category)}
+                style={[
+                  styles.tabButton,
+                  isActive ? styles.tabButtonActive : styles.tabButtonInactive
+                ]}
+              >
+                <Text style={[
+                  styles.tabText,
+                  isActive ? styles.tabTextActive : styles.tabTextInactive
+                ]}>
+                  {category} ({count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
 
   // --- RENDER ITEM (Tarjeta de Producto) ---
   const renderProduct = ({ item }) => {
@@ -120,6 +225,7 @@ const CommerceProductsScreen = () => {
 
       {/* CONTENEDOR BLANCO */}
       <View style={styles.whiteCard}>
+        {renderCategoriesTabs()}
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={THEME_COLOR} />
@@ -127,7 +233,7 @@ const CommerceProductsScreen = () => {
           </View>
         ) : (
           <FlatList
-            data={products}
+            data={filteredProducts}
             renderItem={renderProduct}
             keyExtractor={item => item.id.toString()}
             contentContainerStyle={styles.listContent}
@@ -223,6 +329,49 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 10 },
   emptySubtitle: { color: '#888', textAlign: 'center' },
+
+  // Tabs Styles
+  tabsWrapper: {
+    width: '100%',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 5,
+  },
+  tabsContainer: {
+    paddingVertical: 5,
+  },
+  tabButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: THEME_COLOR,
+    borderColor: THEME_COLOR,
+    shadowColor: THEME_COLOR,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  tabButtonInactive: {
+    backgroundColor: '#F5F5F5',
+    borderColor: '#EAEAEA',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
+  },
+  tabTextInactive: {
+    color: '#666666',
+  },
 });
 
 export default CommerceProductsScreen;
