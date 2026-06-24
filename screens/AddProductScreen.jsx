@@ -41,6 +41,17 @@ const AddProductScreen = ({ navigation }) => {
   const [isCustomizable, setIsCustomizable] = useState(false);
   const [saleLocation, setSaleLocation] = useState('feed');
 
+  // Estados de Variantes y Modificadores
+  const [variantGroupName, setVariantGroupName] = useState('Elige tu tamaño');
+  const [modifierGroupName, setModifierGroupName] = useState('Ingredientes Extra');
+  const [variants, setVariants] = useState([]);
+  const [modifiers, setModifiers] = useState([]);
+
+  const [newVariantName, setNewVariantName] = useState('');
+  const [newVariantPrice, setNewVariantPrice] = useState('');
+  const [newModifierName, setNewModifierName] = useState('');
+  const [newModifierPrice, setNewModifierPrice] = useState('');
+
   const [loading, setLoading] = useState(false);
 
   const pickImage = async () => {
@@ -74,6 +85,12 @@ const AddProductScreen = ({ navigation }) => {
     // Enviamos el valor del Switch
     formData.append('is_customizable', isCustomizable);
     formData.append('sale_location', saleLocation);
+
+    // Variantes y modificadores
+    formData.append('variant_group_name', variantGroupName);
+    formData.append('modifier_group_name', modifierGroupName);
+    formData.append('variants', JSON.stringify(variants));
+    formData.append('modifiers', JSON.stringify(modifiers));
 
     if (image) {
       if (Platform.OS === 'web') {
@@ -235,6 +252,110 @@ const AddProductScreen = ({ navigation }) => {
               />
             </View>
 
+            {/* VARIANTES */}
+            <Text style={styles.labelSection}>Variantes (Formatos / Tamaños)</Text>
+            <Text style={styles.label}>Nombre del Grupo (ej. Elige tu tamaño)</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="options-outline" size={20} color="#666" style={{marginRight: 10}} />
+              <TextInput
+                style={styles.input}
+                value={variantGroupName}
+                onChangeText={setVariantGroupName}
+                placeholder="Elige tu tamaño"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {variants.map((v, i) => (
+              <View key={i} style={styles.itemRowOption}>
+                <Text style={styles.optionText}>{v.name} - ${parseFloat(v.price).toFixed(2)}</Text>
+                <TouchableOpacity onPress={() => setVariants(variants.filter((_, idx) => idx !== i))}>
+                  <Ionicons name="trash-outline" size={20} color={DANGER_COLOR} />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            <View style={styles.addOptionRow}>
+              <TextInput
+                style={[styles.inlineInput, {flex: 2}]}
+                placeholder="Nombre (ej. Mediana)"
+                value={newVariantName}
+                onChangeText={setNewVariantName}
+                placeholderTextColor="#999"
+              />
+              <TextInput
+                style={[styles.inlineInput, {flex: 1, marginLeft: 5}]}
+                placeholder="Precio ($)"
+                value={newVariantPrice}
+                onChangeText={setNewVariantPrice}
+                keyboardType="numeric"
+                placeholderTextColor="#999"
+              />
+              <TouchableOpacity
+                style={styles.inlineAddBtn}
+                onPress={() => {
+                  if (!newVariantName || !newVariantPrice) return;
+                  setVariants([...variants, { name: newVariantName, price: newVariantPrice }]);
+                  setNewVariantName('');
+                  setNewVariantPrice('');
+                }}
+              >
+                <Ionicons name="add" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* MODIFICADORES */}
+            <Text style={styles.labelSection}>Modificadores (Ingredientes Extra)</Text>
+            <Text style={styles.label}>Nombre del Grupo (ej. Ingredientes Extra)</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="options-outline" size={20} color="#666" style={{marginRight: 10}} />
+              <TextInput
+                style={styles.input}
+                value={modifierGroupName}
+                onChangeText={setModifierGroupName}
+                placeholder="Ingredientes Extra"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            {modifiers.map((m, i) => (
+              <View key={i} style={styles.itemRowOption}>
+                <Text style={styles.optionText}>{m.name} - +${parseFloat(m.price).toFixed(2)}</Text>
+                <TouchableOpacity onPress={() => setModifiers(modifiers.filter((_, idx) => idx !== i))}>
+                  <Ionicons name="trash-outline" size={20} color={DANGER_COLOR} />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            <View style={styles.addOptionRow}>
+              <TextInput
+                style={[styles.inlineInput, {flex: 2}]}
+                placeholder="Nombre (ej. Pollo)"
+                value={newModifierName}
+                onChangeText={setNewModifierName}
+                placeholderTextColor="#999"
+              />
+              <TextInput
+                style={[styles.inlineInput, {flex: 1, marginLeft: 5}]}
+                placeholder="Extra ($)"
+                value={newModifierPrice}
+                onChangeText={setNewModifierPrice}
+                keyboardType="numeric"
+                placeholderTextColor="#999"
+              />
+              <TouchableOpacity
+                style={styles.inlineAddBtn}
+                onPress={() => {
+                  if (!newModifierName || !newModifierPrice) return;
+                  setModifiers([...modifiers, { name: newModifierName, price: newModifierPrice }]);
+                  setNewModifierName('');
+                  setNewModifierPrice('');
+                }}
+              >
+                <Ionicons name="add" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
             {/* Selector de Imagen */}
             <Text style={styles.label}>Foto del Producto</Text>
             <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
@@ -328,6 +449,54 @@ const styles = StyleSheet.create({
   },
   disabledButton: { backgroundColor: THEME_DISABLED },
   saveButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  labelSection: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: THEME_COLOR,
+    marginTop: 20,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME_LIGHT,
+    paddingBottom: 5,
+  },
+  itemRowOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAF9',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  optionText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  addOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  inlineInput: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 45,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  inlineAddBtn: {
+    backgroundColor: THEME_COLOR,
+    width: 45,
+    height: 45,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
 });
 
 export default AddProductScreen;

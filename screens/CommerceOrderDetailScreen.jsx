@@ -148,29 +148,40 @@ const CommerceOrderDetailScreen = ({ route, navigation }) => {
           {/* 3. PRODUCTOS (COMANDA) */}
           <Text style={styles.sectionTitle}>Comanda (Cocina)</Text>
           <View style={styles.productsContainer}>
-            {order.items.map((item, index) => (
-              <View key={index} style={styles.productRow}>
-                {/* Cantidad */}
-                <View style={styles.qtyBox}>
-                  <Text style={styles.qtyText}>{item.quantity}x</Text>
-                </View>
+            {order.items.map((item, index) => {
+              const productName = item.product ? item.product.name : (item.product_name || "Producto");
+              return (
+                <View key={index} style={styles.productRow}>
+                  {/* Cantidad */}
+                  <View style={styles.qtyBox}>
+                    <Text style={styles.qtyText}>{item.quantity}x</Text>
+                  </View>
 
-                {/* Detalles */}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.productName}>{item.product.name}</Text>
-                  {/* Notas de personalización destacadas */}
-                  {item.customization_details ? (
-                    <View style={styles.noteContainer}>
-                      <Ionicons name="alert-circle-outline" size={14} color="#D35400" style={{marginTop: 2, marginRight: 4}}/>
-                      <Text style={styles.noteText}>{item.customization_details}</Text>
-                    </View>
-                  ) : null}
-                </View>
+                  {/* Detalles */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.productName}>{productName}</Text>
+                    {item.selected_variant_name ? (
+                      <Text style={{color: '#666', fontSize: 13, marginTop: 2}}>Tamaño: {item.selected_variant_name}</Text>
+                    ) : null}
+                    {item.selected_modifiers_json && item.selected_modifiers_json.length > 0 ? (
+                      <Text style={{color: '#666', fontSize: 13, marginTop: 2}}>
+                        Extras: {item.selected_modifiers_json.map(m => m.name).join(', ')}
+                      </Text>
+                    ) : null}
+                    {/* Notas de personalización destacadas */}
+                    {item.customization_details ? (
+                      <View style={styles.noteContainer}>
+                        <Ionicons name="alert-circle-outline" size={14} color="#D35400" style={{marginTop: 2, marginRight: 4}}/>
+                        <Text style={styles.noteText}>{item.customization_details}</Text>
+                      </View>
+                    ) : null}
+                  </View>
 
-                {/* Precio */}
-                <Text style={styles.priceText}>${item.price_at_purchase}</Text>
-              </View>
-            ))}
+                  {/* Precio */}
+                  <Text style={styles.priceText}>${parseFloat(item.price_at_purchase).toFixed(2)}</Text>
+                </View>
+              );
+            })}
 
             {/* Total */}
             <View style={styles.totalContainer}>
