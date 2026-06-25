@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "Conecta-socios",
     slug: "app-socios",
-    version: "2.0.7",
+    version: "2.0.9",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -19,7 +19,7 @@ export default {
       }
     },
     android: {
-      versionCode: 207,
+      versionCode: 209,
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
