@@ -5,25 +5,17 @@ import SecureStorage from '../services/SecureStorage';
 import apiClient from '../api';
 import axios from 'axios';
 import CONFIG from '../config';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import Alert from '../components/AlertPolyfill';
 import { navigationRef } from '../App';
+import {
+  requestUserPermission,
+  setupNotificationChannels,
+  getFcmToken,
+  initializeFcmListeners
+} from '../services/FirebaseNotifications';
 
 const API_URL = CONFIG.API_URL;
-
 const AuthContext = createContext(null);
-
-// Configuración global de notificaciones para móviles nativos
-if (Platform.OS !== 'web') {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
-  });
-}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -76,56 +68,28 @@ export const AuthProvider = ({ children }) => {
   // --- FUNCIÓN PARA REGISTRAR NOTIFICACIONES ---
   const registerForPushNotificationsAsync = async () => {
     try {
-      if (Platform.OS === 'web') {
-        if ('Notification' in window) {
-          const permission = await Notification.requestPermission();
-          console.log('Permisos de notificación en navegador web:', permission);
-        }
+      if (Platform.OS === 'web') return null;
+
+      const hasPermission = await requestUserPermission();
+      if (!hasPermission) {
+        console.warn('⚠️ Permisos de notificación denegados');
         return null;
       }
 
-      if (!Device.isDevice) {
-        console.log('⚠️ Se necesita un dispositivo físico para notificaciones Push');
-        return null;
-      }
+      await setupNotificationChannels();
 
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== 'granted') {
-        Alert.alert('Permiso denegado', 'No se pudieron activar las notificaciones push.');
-        return null;
-      }
-
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'default',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
-          sound: 'default',
-        });
-      }
-
-      const token = (await Notifications.getExpoPushTokenAsync()).data;
-
-      // ENVÍA EL TOKEN AL BACKEND
+      const token = await getFcmToken();
       if (token) {
         try {
-          await apiClient.post('/guardar-token/', { token });
-          console.log("Token push guardado con éxito:", token);
+          await apiClient.post('/guardar-token/', { token, device_type: Platform.OS });
+          console.log("Token push FCM guardado con éxito:", token);
         } catch (error) {
-          console.error("Error guardando token push:", error);
+          console.error("Error guardando token push FCM:", error);
         }
       }
       return token;
     } catch (error) {
-      console.error('❌ Error en registro de notificaciones:', error);
+      console.error('❌ Error en registro de notificaciones FCM:', error);
       return null;
     }
   };
@@ -250,48 +214,12 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (Platform.OS === 'web') return;
 
-    // Escucha en primer plano (Foreground)
-    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notificación recibida en primer plano:', notification);
-    });
-
-    // Escucha de tap/click
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notificación cliqueada:', response);
-      try {
-        const data = response.notification.request.content.data;
-        if (data) {
-          if (data.order_id) {
-            setTimeout(() => {
-              if (navigationRef.isReady()) {
-                if (role === 'owner') {
-                  navigationRef.navigate('CommerceOrderDetail', { orderId: data.order_id });
-                } else if (role === 'courier') {
-                  navigationRef.navigate('DeliveryTracking', { orderId: data.order_id });
-                }
-              }
-            }, 500);
-          } else if (data.trip_id) {
-            setTimeout(() => {
-              if (navigationRef.isReady()) {
-                if (role === 'driver') {
-                  navigationRef.navigate('MainDriver', {
-                    screen: 'TripActual',
-                    params: { tripId: data.trip_id }
-                  });
-                }
-              }
-            }, 500);
-          }
-        }
-      } catch (error) {
-        console.error('Error al manejar click en notificación push:', error);
-      }
-    });
+    // Inicializar listeners nativos de Firebase/Notifee
+    // Pasamos el rol para poder reproducir alarmas
+    const unsubscribeFcm = initializeFcmListeners(navigationRef, role);
 
     return () => {
-      if (notificationListener) notificationListener.remove();
-      if (responseListener) responseListener.remove();
+      if (unsubscribeFcm) unsubscribeFcm();
     };
   }, [role]);
 

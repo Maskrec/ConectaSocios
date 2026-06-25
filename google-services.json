@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "234381522348",
+    "project_id": "conectalocal-7c4e4",
+    "storage_bucket": "conectalocal-7c4e4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:234381522348:android:6dd3de94840801779a3609",
+        "android_client_info": {
+          "package_name": "com.conecta.local"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-R__ZMXLnWt0Q5pH5Cfh0z4XIwgyJLxw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:234381522348:android:111a9a26609b92409a3609",
+        "android_client_info": {
+          "package_name": "com.maskrecsoft.repartidor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-R__ZMXLnWt0Q5pH5Cfh0z4XIwgyJLxw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

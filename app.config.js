@@ -14,6 +14,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.maskrecsoft.repartidor",
+      googleServicesFile: "./GoogleService-Info.plist",
       config: {
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_IOS
       }
@@ -25,6 +26,7 @@ export default {
         backgroundColor: "#ffffff"
       },
       package: "com.maskrecsoft.repartidor",
+      googleServicesFile: "./google-services.json",
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_ANDROID
@@ -36,6 +38,17 @@ export default {
       favicon: "./assets/favicon.png"
     },
     plugins: [
+      "@react-native-firebase/app",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "../../node_modules/@notifee/react-native/android/libs"
+            ]
+          }
+        }
+      ],
       [
         "expo-location",
         {
