@@ -253,6 +253,7 @@ const LoginPage = () => {
               <Text style={styles.closeModalText}>Entendido</Text>
             </TouchableOpacity>
           </View>
+        </View>
       </Modal>
 
       {/* MODAL DE RECUPERAR CONTRASEÑA */}
