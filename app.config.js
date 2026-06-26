@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "Conecta-socios",
     slug: "app-socios",
-    version: "2.0.9",
+    version: "2.1.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -20,7 +20,7 @@ export default {
       }
     },
     android: {
-      versionCode: 209,
+      versionCode: 210,
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
@@ -55,6 +55,11 @@ export default {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
       ]
-    ]
+    ],
+    extra: {
+      eas: {
+        projectId: "8962593f-a7d9-4a2a-987e-5fba426e9b1a"
+      }
+    }
   }
 };

@@ -95,8 +95,11 @@ export function initializeFcmListeners(navigationRef, userRole) {
     const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'Nuevo Pedido 📦';
     const body = remoteMessage.notification?.body || remoteMessage.data?.body || 'Tienes una nueva notificación.';
 
-    // Si es comercio (owner) o tiene flag de sonido de alarma, reproducir alarma looping
-    const isAlarma = userRole === 'owner' || remoteMessage.data?.sound === 'alarma_comercios' || remoteMessage.data?.sound === 'alarma_comercios_v2';
+    // Si es comercio (owner) o tiene flag de sonido de alarma o el título contiene 'Pedido', reproducir alarma looping
+    const isAlarma = userRole === 'owner' || 
+                     remoteMessage.data?.sound === 'alarma_comercios' || 
+                     remoteMessage.data?.sound === 'alarma_comercios_v2' ||
+                     (title && title.includes('Pedido'));
 
     await notifee.displayNotification({
       title,
