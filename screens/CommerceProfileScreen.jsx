@@ -56,7 +56,9 @@ const CommerceProfileScreen = () => {
           name: commerceRes.data.name,
           address: commerceRes.data.address,
           logo: commerceRes.data.logo,
-          category: commerceRes.data.category
+          category: commerceRes.data.category,
+          opening_time: commerceRes.data.opening_time ? commerceRes.data.opening_time.substring(0, 5) : '',
+          closing_time: commerceRes.data.closing_time ? commerceRes.data.closing_time.substring(0, 5) : ''
         });
 
         // Extraer datos si viene paginado (como objeto con .results) o si es un arreglo directo
@@ -163,7 +165,27 @@ const CommerceProfileScreen = () => {
   const handleSaveInfo = async () => {
       setLoading(true);
       try {
-        await apiClient.patch('/mi-comercio/', { name: commerceData.name, address: commerceData.address });
+        const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+        const opTime = commerceData.opening_time ? commerceData.opening_time.trim() : null;
+        const clTime = commerceData.closing_time ? commerceData.closing_time.trim() : null;
+        
+        if (opTime && !timeRegex.test(opTime)) {
+            Alert.alert("Formato Inválido", "La hora de apertura debe tener formato HH:MM (ej: 08:00).");
+            setLoading(false);
+            return;
+        }
+        if (clTime && !timeRegex.test(clTime)) {
+            Alert.alert("Formato Inválido", "La hora de cierre debe tener formato HH:MM (ej: 22:30).");
+            setLoading(false);
+            return;
+        }
+
+        await apiClient.patch('/mi-comercio/', { 
+            name: commerceData.name, 
+            address: commerceData.address,
+            opening_time: opTime ? `${opTime}:00` : null,
+            closing_time: clTime ? `${clTime}:00` : null
+        });
         Alert.alert("Éxito", "Información guardada correctamente.");
       } catch (error) { Alert.alert("Error", "No se pudo guardar."); }
       finally { setLoading(false); }
@@ -244,6 +266,28 @@ const CommerceProfileScreen = () => {
               value={commerceData.address}
               onChangeText={t => setCommerceData({...commerceData, address: t})}
             />
+          </View>
+
+          <Text style={styles.label}>Horario de Atención (Apertura y Cierre)</Text>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15}}>
+            <View style={[styles.inputContainer, {flex: 0.48, marginBottom: 0}]}>
+              <Ionicons name="time-outline" size={20} color="#666" style={{marginRight: 10}} />
+              <TextInput
+                style={styles.input}
+                placeholder="Apertura (ej: 08:00)"
+                value={commerceData.opening_time}
+                onChangeText={t => setCommerceData({...commerceData, opening_time: t})}
+              />
+            </View>
+            <View style={[styles.inputContainer, {flex: 0.48, marginBottom: 0}]}>
+              <Ionicons name="time-outline" size={20} color="#666" style={{marginRight: 10}} />
+              <TextInput
+                style={styles.input}
+                placeholder="Cierre (ej: 22:30)"
+                value={commerceData.closing_time}
+                onChangeText={t => setCommerceData({...commerceData, closing_time: t})}
+              />
+            </View>
           </View>
 
           {/* Selector Categoría */}

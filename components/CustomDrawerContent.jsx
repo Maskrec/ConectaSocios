@@ -5,8 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext'; // Importamos el contexto
 
 const CustomDrawerContent = (props) => {
-  const { user, logout } = useAuth(); // Obtenemos el usuario y la función logout
-  const [isActivo, setIsActivo] = useState(true);
+  const { user, logout, isActivo, toggleAvailability } = useAuth(); // Obtenemos el usuario, la función logout y la disponibilidad
 
   return (
     <DrawerContentScrollView {...props} style={styles.container}>
@@ -26,7 +25,7 @@ const CustomDrawerContent = (props) => {
         <Switch
           trackColor={{ false: "#767577", true: "#81b0ff" }}
           thumbColor={isActivo ? "#f5dd4b" : "#f4f3f4"}
-          onValueChange={() => setIsActivo(previousState => !previousState)}
+          onValueChange={toggleAvailability}
           value={isActivo}
         />
       </View>

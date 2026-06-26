@@ -22,7 +22,27 @@ export const AuthProvider = ({ children }) => {
   const [authToken, setAuthToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [role, setRole] = useState(null);
+  const [isActivo, setIsActivo] = useState(true);
   const lastWebItemsRef = useRef([]);
+
+  useEffect(() => {
+    if (user) {
+      setIsActivo(user.is_available ?? true);
+    }
+  }, [user]);
+
+  const toggleAvailability = async () => {
+    const newValue = !isActivo;
+    setIsActivo(newValue);
+    try {
+      const response = await apiClient.patch('/auth/perfil/', { is_available: newValue });
+      setUser(response.data);
+      console.log("Estado de disponibilidad actualizado en el servidor a:", newValue);
+    } catch (error) {
+      console.error("Error al actualizar disponibilidad:", error);
+      setIsActivo(!newValue);
+    }
+  };
 
   // Helper para mostrar notificaciones nativas en el navegador (Web)
   const showWebNotification = (title, body, data = {}) => {
@@ -297,7 +317,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, authToken, role, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, setUser, authToken, role, isLoading, login, logout, isActivo, toggleAvailability }}>
       {children}
     </AuthContext.Provider>
   );

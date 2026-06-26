@@ -32,8 +32,7 @@ const SUCCESS_COLOR = '#2ECC71';
 const DANGER_COLOR = '#E74C3C';
 
 const ProfileScreen = () => {
-  const { user, logout, setUser } = useAuth();
-  const [isActivo, setIsActivo] = useState(true);
+  const { user, logout, setUser, isActivo, toggleAvailability } = useAuth();
   const [uploading, setUploading] = useState(false);
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
@@ -202,7 +201,7 @@ const ProfileScreen = () => {
         <View style={styles.sectionCard}>
             <View style={styles.rowBetween}>
                 <Text style={styles.sectionTitle}>Estado: {isActivo ? '🟢 Activo' : '⚫ Inactivo'}</Text>
-                <Switch trackColor={{ false: "#ccc", true: THEME_COLOR }} thumbColor={"#fff"} onValueChange={() => setIsActivo(!isActivo)} value={isActivo} />
+                <Switch trackColor={{ false: "#ccc", true: THEME_COLOR }} thumbColor={"#fff"} onValueChange={toggleAvailability} value={isActivo} />
             </View>
         </View>
 

@@ -38,8 +38,14 @@ export async function setupNotificationChannels() {
   });
 
   // Canal Alarma para Comercios (Pedidos Nuevos)
+  try {
+    await notifee.deleteChannel('alarma_comercios');
+  } catch (err) {
+    console.log("Error al borrar canal antiguo:", err);
+  }
+
   await notifee.createChannel({
-    id: 'alarma_comercios',
+    id: 'alarma_comercios_v2',
     name: 'Nuevos Pedidos (Alarma)',
     importance: AndroidImportance.HIGH,
     sound: 'alarma_comercio', // Apunta a alarma_comercio.mp3 en android/app/src/main/res/raw/
@@ -90,13 +96,13 @@ export function initializeFcmListeners(navigationRef, userRole) {
     const body = remoteMessage.notification?.body || remoteMessage.data?.body || 'Tienes una nueva notificación.';
 
     // Si es comercio (owner) o tiene flag de sonido de alarma, reproducir alarma looping
-    const isAlarma = userRole === 'owner' || remoteMessage.data?.sound === 'alarma_comercios';
+    const isAlarma = userRole === 'owner' || remoteMessage.data?.sound === 'alarma_comercios' || remoteMessage.data?.sound === 'alarma_comercios_v2';
 
     await notifee.displayNotification({
       title,
       body,
       android: {
-        channelId: isAlarma ? 'alarma_comercios' : 'default',
+        channelId: isAlarma ? 'alarma_comercios_v2' : 'default',
         importance: AndroidImportance.HIGH,
         ongoing: isAlarma,
         loopSound: isAlarma,
