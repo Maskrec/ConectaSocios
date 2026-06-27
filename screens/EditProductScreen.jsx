@@ -195,7 +195,7 @@ const EditProductScreen = ({ route, navigation }) => {
       {/* TARJETA BLANCA */}
       <View style={styles.whiteCard}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
             {/* IMAGEN */}
             <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
@@ -351,8 +351,8 @@ const EditProductScreen = ({ route, navigation }) => {
                 onPress={() => {
                   if (!newVariantName || !newVariantPrice) return;
                   setVariants([...variants, { name: newVariantName, price: newVariantPrice }]);
-                  newVariantName && setNewVariantName('');
-                  newVariantPrice && setNewVariantPrice('');
+                  setNewVariantName('');
+                  setNewVariantPrice('');
                 }}
               >
                 <Ionicons name="add" size={24} color="#fff" />
@@ -403,8 +403,8 @@ const EditProductScreen = ({ route, navigation }) => {
                 onPress={() => {
                   if (!newModifierName || !newModifierPrice) return;
                   setModifiers([...modifiers, { name: newModifierName, price: newModifierPrice }]);
-                  newModifierName && setNewModifierName('');
-                  newModifierPrice && setNewModifierPrice('');
+                  setNewModifierName('');
+                  setNewModifierPrice('');
                 }}
               >
                 <Ionicons name="add" size={24} color="#fff" />

@@ -139,7 +139,7 @@ const AddProductScreen = ({ navigation }) => {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
         >
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
             {/* Input Nombre */}
             <Text style={styles.label}>Nombre del Platillo</Text>
