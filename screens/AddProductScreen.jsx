@@ -24,6 +24,7 @@ const THEME_COLOR = '#1ABC9C';      // Ocean Teal (Principal)
 const THEME_LIGHT = '#E8F8F5';      // Fondo Suave (Teal muy claro)
 const THEME_BORDER = '#A3E4D7';     // Borde suave
 const THEME_DISABLED = '#A2D9CE';   // Color para estados deshabilitados
+const DANGER_COLOR = '#E74C3C';     // Rojo para cancelar/eliminar
 
 const AddProductScreen = ({ navigation }) => {
   const { user } = useAuth();
