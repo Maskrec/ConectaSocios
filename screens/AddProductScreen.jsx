@@ -276,33 +276,35 @@ const AddProductScreen = ({ navigation }) => {
               </View>
             ))}
 
-            <View style={styles.addOptionRow}>
+            <View style={{ marginBottom: 15 }}>
               <TextInput
-                style={[styles.inlineInput, {flex: 2}]}
-                placeholder="Nombre (ej. Mediana)"
+                style={[styles.inlineInput, { width: '100%', marginBottom: 8 }]}
+                placeholder="Nombre de la variante (ej. Mediana)"
                 value={newVariantName}
                 onChangeText={setNewVariantName}
                 placeholderTextColor="#999"
               />
-              <TextInput
-                style={[styles.inlineInput, {flex: 1, marginLeft: 5}]}
-                placeholder="Precio ($)"
-                value={newVariantPrice}
-                onChangeText={setNewVariantPrice}
-                keyboardType="numeric"
-                placeholderTextColor="#999"
-              />
-              <TouchableOpacity
-                style={styles.inlineAddBtn}
-                onPress={() => {
-                  if (!newVariantName || !newVariantPrice) return;
-                  setVariants([...variants, { name: newVariantName, price: newVariantPrice }]);
-                  setNewVariantName('');
-                  setNewVariantPrice('');
-                }}
-              >
-                <Ionicons name="add" size={24} color="#fff" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.inlineInput, { flex: 1 }]}
+                  placeholder="Precio ($)"
+                  value={newVariantPrice}
+                  onChangeText={setNewVariantPrice}
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+                <TouchableOpacity
+                  style={styles.inlineAddBtn}
+                  onPress={() => {
+                    if (!newVariantName || !newVariantPrice) return;
+                    setVariants([...variants, { name: newVariantName, price: newVariantPrice }]);
+                    setNewVariantName('');
+                    setNewVariantPrice('');
+                  }}
+                >
+                  <Ionicons name="add" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* MODIFICADORES */}
@@ -328,33 +330,35 @@ const AddProductScreen = ({ navigation }) => {
               </View>
             ))}
 
-            <View style={styles.addOptionRow}>
+            <View style={{ marginBottom: 15 }}>
               <TextInput
-                style={[styles.inlineInput, {flex: 2}]}
-                placeholder="Nombre (ej. Pollo)"
+                style={[styles.inlineInput, { width: '100%', marginBottom: 8 }]}
+                placeholder="Nombre del extra (ej. Pollo)"
                 value={newModifierName}
                 onChangeText={setNewModifierName}
                 placeholderTextColor="#999"
               />
-              <TextInput
-                style={[styles.inlineInput, {flex: 1, marginLeft: 5}]}
-                placeholder="Extra ($)"
-                value={newModifierPrice}
-                onChangeText={setNewModifierPrice}
-                keyboardType="numeric"
-                placeholderTextColor="#999"
-              />
-              <TouchableOpacity
-                style={styles.inlineAddBtn}
-                onPress={() => {
-                  if (!newModifierName || !newModifierPrice) return;
-                  setModifiers([...modifiers, { name: newModifierName, price: newModifierPrice }]);
-                  setNewModifierName('');
-                  setNewModifierPrice('');
-                }}
-              >
-                <Ionicons name="add" size={24} color="#fff" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.inlineInput, { flex: 1 }]}
+                  placeholder="Precio extra ($)"
+                  value={newModifierPrice}
+                  onChangeText={setNewModifierPrice}
+                  keyboardType="numeric"
+                  placeholderTextColor="#999"
+                />
+                <TouchableOpacity
+                  style={styles.inlineAddBtn}
+                  onPress={() => {
+                    if (!newModifierName || !newModifierPrice) return;
+                    setModifiers([...modifiers, { name: newModifierName, price: newModifierPrice }]);
+                    setNewModifierName('');
+                    setNewModifierPrice('');
+                  }}
+                >
+                  <Ionicons name="add" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Selector de Imagen */}
