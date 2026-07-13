@@ -366,21 +366,35 @@ const AvailableOrdersScreen = () => {
                       longitude: parseFloat(selectedOrder.is_commerce_shipment 
                         ? selectedOrder.shipment_destination_longitude 
                         : (selectedOrder.delivery_address?.longitude || selectedOrder.commerce_longitude || 0)),
-                      latitudeDelta: 0.015,
-                      longitudeDelta: 0.015,
+                      latitudeDelta: 0.02,
+                      longitudeDelta: 0.02,
                     }}
                     provider={PROVIDER_GOOGLE}
                   >
+                    {/* Origen (Recolección) */}
+                    {!selectedOrder.is_mercado && selectedOrder.commerce_latitude && (
+                      <Marker
+                        coordinate={{
+                          latitude: parseFloat(selectedOrder.commerce_latitude),
+                          longitude: parseFloat(selectedOrder.commerce_longitude),
+                        }}
+                        title="Origen (Recolección)"
+                        pinColor="#5D5FEF"
+                      />
+                    )}
+
+                    {/* Destino (Entrega) */}
                     <Marker
                       coordinate={{
                         latitude: parseFloat(selectedOrder.is_commerce_shipment 
                           ? selectedOrder.shipment_destination_latitude 
-                          : (selectedOrder.delivery_address?.latitude || selectedOrder.commerce_latitude || 0)),
+                          : (selectedOrder.delivery_address?.latitude || 0)),
                         longitude: parseFloat(selectedOrder.is_commerce_shipment 
                           ? selectedOrder.shipment_destination_longitude 
-                          : (selectedOrder.delivery_address?.longitude || selectedOrder.commerce_longitude || 0)),
+                          : (selectedOrder.delivery_address?.longitude || 0)),
                       }}
-                      title="Destino"
+                      title="Destino (Entrega)"
+                      pinColor="#E74C3C"
                     />
                   </MapView>
                 </View>
