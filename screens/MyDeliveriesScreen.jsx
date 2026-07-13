@@ -28,9 +28,9 @@ const MyDeliveriesScreen = () => {
     setIsLoading(true);
     try {
       const response = await apiClient.get('/mis-entregas/');
-      
+
       const ordersData = Array.isArray(response.data) ? response.data : (response.data.results || []);
-      
+
       // Ordenar: Los más recientes arriba
       const sorted = ordersData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setMyOrders(sorted);
@@ -53,15 +53,27 @@ const MyDeliveriesScreen = () => {
   const renderDeliveryItem = useCallback(({ item }) => {
     // Determinar fase: 'accepted' = Ir al Comercio, 'in_progress' = Ir al Cliente
     const isPickupPhase = item.status === 'accepted';
+    const isCommerceShipment = item.is_commerce_shipment === true;
 
     // Configuración visual dinámica
-    const cardColor = isPickupPhase ? THEME_COLOR : DELIVERY_COLOR;
-    const statusText = isPickupPhase ? 'Ir a Recolectar' : 'Entregar al Cliente';
-    const statusIcon = isPickupPhase ? 'storefront' : 'home';
+    let cardColor = isPickupPhase ? THEME_COLOR : DELIVERY_COLOR;
+    let statusText = isPickupPhase ? 'Ir a Recolectar' : 'Entregar al Cliente';
+    let statusIcon = isPickupPhase ? 'storefront' : 'home';
+
+    if (isCommerceShipment) {
+      cardColor = isPickupPhase ? '#2980B9' : '#27AE60'; // Azul para pickup, verde para delivery
+      statusText = isPickupPhase ? 'Recoger Paquete' : 'Entregar Envío';
+      statusIcon = isPickupPhase ? 'cube' : 'location';
+    }
 
     // Destino Actual (Lo más importante para el chofer)
-    const currentTargetName = isPickupPhase ? item.commerce_name : item.customer_name;
-    const currentAddress = isPickupPhase ? item.commerce_address : (item.delivery_address?.address_string || 'Ver mapa');
+    let currentTargetName = isPickupPhase ? item.commerce_name : item.customer_name;
+    let currentAddress = isPickupPhase ? item.commerce_address : (item.delivery_address?.address_string || 'Ver mapa');
+
+    if (isCommerceShipment) {
+      currentTargetName = isPickupPhase ? item.commerce_name : 'Destinatario de Comercio';
+      currentAddress = isPickupPhase ? item.commerce_address : (item.shipment_destination_text || 'Ver mapa');
+    }
 
     return (
       <TouchableOpacity
@@ -71,12 +83,12 @@ const MyDeliveriesScreen = () => {
       >
         {/* Cabecera de Tarjeta: ID y Estado */}
         <View style={styles.cardHeader}>
-          <Text style={styles.orderId}>Pedido #{item.id}</Text>
+          <Text style={styles.orderId}>{isCommerceShipment ? `Envío #${item.id}` : `Pedido #${item.id}`}</Text>
           <View style={[styles.statusBadge, { backgroundColor: isPickupPhase ? '#E8EAF6' : '#E8F5E9' }]}>
-             <Ionicons name={statusIcon} size={14} color={cardColor} style={{marginRight: 5}} />
-             <Text style={{color: cardColor, fontWeight: 'bold', fontSize: 12}}>
-               {statusText}
-             </Text>
+            <Ionicons name={statusIcon} size={14} color={cardColor} style={{ marginRight: 5 }} />
+            <Text style={{ color: cardColor, fontWeight: 'bold', fontSize: 12 }}>
+              {statusText}
+            </Text>
           </View>
         </View>
 
@@ -84,27 +96,27 @@ const MyDeliveriesScreen = () => {
 
         {/* Cuerpo: A dónde ir AHORA */}
         <View style={styles.body}>
-            <Text style={styles.labelDestination}>
-                {isPickupPhase ? "📍 RECOGER EN:" : "🏁 LLEVAR A:"}
-            </Text>
-            <Text style={styles.targetName}>{currentTargetName}</Text>
-            <Text style={styles.addressText} numberOfLines={2}>{currentAddress}</Text>
+          <Text style={styles.labelDestination}>
+            {isPickupPhase ? "📍 RECOGER EN:" : "🏁 LLEVAR A:"}
+          </Text>
+          <Text style={styles.targetName}>{currentTargetName}</Text>
+          <Text style={styles.addressText} numberOfLines={2}>{currentAddress}</Text>
         </View>
 
         {/* Footer: Dinero y Acción */}
         <View style={styles.footer}>
-           <View>
-              <Text style={styles.totalLabel}>Cobrar:</Text>
-              <Text style={styles.totalValue}>${item.final_total}</Text>
-           </View>
+          <View>
+            <Text style={styles.totalLabel}>{isCommerceShipment ? "Cobrar al entregar:" : "Cobrar:"}</Text>
+            <Text style={styles.totalValue}>${item.final_total}</Text>
+          </View>
 
-           <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: cardColor }]}
-              onPress={() => navigation.navigate('DeliveryTracking', { orderId: item.id })}
-           >
-              <Text style={styles.actionButtonText}>VER RUTA</Text>
-              <Ionicons name="navigate" size={16} color="#fff" style={{marginLeft: 5}}/>
-           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: cardColor }]}
+            onPress={() => navigation.navigate('DeliveryTracking', { orderId: item.id })}
+          >
+            <Text style={styles.actionButtonText}>VER RUTA</Text>
+            <Ionicons name="navigate" size={16} color="#fff" style={{ marginLeft: 5 }} />
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -118,14 +130,14 @@ const MyDeliveriesScreen = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mis Entregas</Text>
         <Text style={styles.headerSubtitle}>
-            {myOrders.length > 0 ? `Tienes ${myOrders.length} curso` : 'Sin entregas activas'}
+          {myOrders.length > 0 ? `Tienes ${myOrders.length} curso` : 'Sin entregas activas'}
         </Text>
       </View>
 
       {/* Lista */}
       <View style={styles.listContainer}>
         {isLoading && myOrders.length === 0 ? (
-          <ActivityIndicator size="large" color={THEME_COLOR} style={{marginTop: 50}} />
+          <ActivityIndicator size="large" color={THEME_COLOR} style={{ marginTop: 50 }} />
         ) : (
           <FlatList
             data={myOrders}
@@ -133,16 +145,16 @@ const MyDeliveriesScreen = () => {
             keyExtractor={item => item.id.toString()}
             contentContainerStyle={{ padding: 20 }}
             refreshControl={
-                <RefreshControl refreshing={isLoading} onRefresh={fetchMyOrders} colors={[THEME_COLOR]} />
+              <RefreshControl refreshing={isLoading} onRefresh={fetchMyOrders} colors={[THEME_COLOR]} />
             }
             ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                    <View style={styles.emptyIconBg}>
-                        <Ionicons name="documents-outline" size={50} color="#ccc" />
-                    </View>
-                    <Text style={styles.emptyTitle}>No tienes entregas activas</Text>
-                    <Text style={styles.emptyText}>Ve a la pestaña "Disponibles" para tomar nuevos pedidos.</Text>
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconBg}>
+                  <Ionicons name="documents-outline" size={50} color="#ccc" />
                 </View>
+                <Text style={styles.emptyTitle}>No tienes entregas activas</Text>
+                <Text style={styles.emptyText}>Ve a la pestaña "Disponibles" para tomar nuevos pedidos.</Text>
+              </View>
             }
           />
         )}
@@ -159,7 +171,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME_COLOR,
     paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20,
     borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
-    elevation: 5, shadowColor: '#000', shadowOffset: {width:0, height:2}, shadowOpacity:0.2
+    elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   headerSubtitle: { fontSize: 14, color: '#E0E0FF', marginTop: 5 },

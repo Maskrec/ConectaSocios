@@ -7,13 +7,16 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StatusBar,
-  RefreshControl
+  RefreshControl,
+  Modal,
+  ScrollView
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext'; // <--- IMPORTANTE: Para obtener la deuda del usuario
 import apiClient from '../api';
 import { Ionicons } from '@expo/vector-icons';
 import Alert from '../components/AlertPolyfill';
+import MapView, { Marker, PROVIDER_GOOGLE } from '../components/MapShim';
 
 // --- PALETA REPARTIDOR (Indigo) ---
 const THEME_COLOR = '#5D5FEF';
@@ -25,7 +28,19 @@ const AvailableOrdersScreen = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [acceptingOrderId, setAcceptingOrderId] = useState(null); // Track orden siendo aceptada
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const navigation = useNavigation();
+
+  const handleOpenDetails = (order) => {
+    setSelectedOrder(order);
+    setIsModalVisible(true);
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedOrder(null);
+    setIsModalVisible(false);
+  };
 
   // --- Función para obtener pedidos y actualizar perfil ---
   const fetchAvailableOrders = async () => {
@@ -119,9 +134,81 @@ const AvailableOrdersScreen = () => {
     const isPendingAtCommerce = item.status === 'pending';
     const isDirectPurchase = item.is_affiliated === false;
     const isMercadoOrder = item.is_mercado === true;
+    const isCommerceShipment = item.is_commerce_shipment === true;
+
+    if (isCommerceShipment) {
+      return (
+        <TouchableOpacity 
+          style={[styles.card, { borderLeftColor: '#2980B9' }]}
+          onPress={() => handleOpenDetails(item)}
+          activeOpacity={0.9}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.commerceInfo}>
+               <Ionicons name="cube-outline" size={18} color="#2980B9" style={{marginRight: 8}}/>
+               <Text style={styles.commerceName}>{item.commerce_name} (Envío)</Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: '#EBF5FB' }]}>
+               <Text style={{color: '#2980B9', fontWeight: 'bold', fontSize: 11}}>
+                  📦 ENVÍO DE COMERCIO
+               </Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.cardBody}>
+              <View style={[styles.row, { marginBottom: 6 }]}>
+                  <Ionicons name="storefront" size={16} color="#666" style={{ marginRight: 6 }} />
+                  <Text style={styles.addressText} numberOfLines={2}>
+                    <Text style={{ fontWeight: 'bold' }}>Origen: </Text>{item.commerce_address}
+                  </Text>
+              </View>
+              <View style={[styles.row, { marginBottom: 6 }]}>
+                  <Ionicons name="location" size={16} color="#E74C3C" style={{ marginRight: 6 }} />
+                  <Text style={styles.addressText} numberOfLines={2}>
+                    <Text style={{ fontWeight: 'bold' }}>Destino: </Text>{item.shipment_destination_text}
+                  </Text>
+              </View>
+              <View style={styles.row}>
+                  <Ionicons name="cash-outline" size={16} color="green" />
+                  <Text style={styles.totalText}>Cobrar al entregar: <Text style={{fontWeight: 'bold', color: 'green'}}>${item.final_total}</Text></Text>
+              </View>
+          </View>
+
+          <TouchableOpacity
+              style={[
+                styles.acceptButton, 
+                { 
+                  backgroundColor: '#2980B9',
+                  opacity: acceptingOrderId === item.id ? 0.6 : 1
+                }
+              ]}
+              onPress={() => handleAcceptOrder(item.id)}
+              disabled={acceptingOrderId !== null}
+              activeOpacity={0.8}
+          >
+              {acceptingOrderId === item.id ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text style={styles.acceptButtonText}>
+                    ACEPTAR ENVÍO DE COMERCIO
+                  </Text>
+                  <Ionicons name="arrow-forward-circle" size={24} color="#fff" style={{marginLeft: 10}} />
+                </>
+              )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      );
+    }
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => handleOpenDetails(item)}
+        activeOpacity={0.9}
+      >
         <View style={styles.cardHeader}>
           <View style={styles.commerceInfo}>
              <Ionicons name="storefront" size={18} color={isMercadoOrder ? '#8E44AD' : THEME_COLOR} style={{marginRight: 8}}/>
@@ -181,7 +268,7 @@ const AvailableOrdersScreen = () => {
               </>
             )}
         </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     );
   };
   // --- VISTA DE BLOQUEO POR DEUDA ---
@@ -240,6 +327,131 @@ const AvailableOrdersScreen = () => {
           }
         />
       )}
+
+      {/* VENTANA EMERGENTE (MODAL) DE DETALLES */}
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseDetails}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            {/* Cabecera */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pedido #{selectedOrder?.id}</Text>
+              <TouchableOpacity onPress={handleCloseDetails}>
+                <Ionicons name="close-circle" size={28} color="#999" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {/* Ubicación de Entrega */}
+              <Text style={styles.modalSectionTitle}>📍 Dirección de Entrega</Text>
+              <Text style={styles.modalAddressText}>
+                {selectedOrder?.is_commerce_shipment 
+                  ? selectedOrder.shipment_destination_text 
+                  : (selectedOrder?.delivery_address?.address_string || 'Dirección no especificada')}
+              </Text>
+
+              {/* Mapa de Entrega */}
+              {selectedOrder && (
+                <View style={styles.mapContainer}>
+                  <MapView
+                    style={styles.modalMap}
+                    initialRegion={{
+                      latitude: parseFloat(selectedOrder.is_commerce_shipment 
+                        ? selectedOrder.shipment_destination_latitude 
+                        : (selectedOrder.delivery_address?.latitude || selectedOrder.commerce_latitude || 0)),
+                      longitude: parseFloat(selectedOrder.is_commerce_shipment 
+                        ? selectedOrder.shipment_destination_longitude 
+                        : (selectedOrder.delivery_address?.longitude || selectedOrder.commerce_longitude || 0)),
+                      latitudeDelta: 0.015,
+                      longitudeDelta: 0.015,
+                    }}
+                    provider={PROVIDER_GOOGLE}
+                  >
+                    <Marker
+                      coordinate={{
+                        latitude: parseFloat(selectedOrder.is_commerce_shipment 
+                          ? selectedOrder.shipment_destination_latitude 
+                          : (selectedOrder.delivery_address?.latitude || selectedOrder.commerce_latitude || 0)),
+                        longitude: parseFloat(selectedOrder.is_commerce_shipment 
+                          ? selectedOrder.shipment_destination_longitude 
+                          : (selectedOrder.delivery_address?.longitude || selectedOrder.commerce_longitude || 0)),
+                      }}
+                      title="Destino"
+                    />
+                  </MapView>
+                </View>
+              )}
+
+              <View style={styles.modalDivider} />
+
+              {/* Lista de Productos */}
+              <Text style={styles.modalSectionTitle}>📦 Productos en el Pedido</Text>
+              {selectedOrder?.is_commerce_shipment ? (
+                <View style={styles.modalSpecialShipmentBox}>
+                  <Ionicons name="cube-outline" size={24} color="#2980B9" style={{ marginRight: 10 }} />
+                  <Text style={styles.modalSpecialShipmentText}>
+                    {selectedOrder.special_instructions || "Envío especial de paquete"}
+                  </Text>
+                </View>
+              ) : (
+                selectedOrder?.items && selectedOrder.items.length > 0 ? (
+                  selectedOrder.items.map((prod, idx) => (
+                    <View key={`modal-item-${idx}`} style={styles.modalItemRow}>
+                      <Text style={styles.modalItemQty}>
+                        {prod.weight_purchased ? `${prod.weight_purchased} kg` : `${parseInt(prod.quantity)} pza(s)`}
+                      </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.modalItemName}>{prod.product_name}</Text>
+                        {prod.selected_variant_name && (
+                          <Text style={styles.modalItemMeta}>Var: {prod.selected_variant_name}</Text>
+                        )}
+                        {prod.selected_modifiers_json && prod.selected_modifiers_json.length > 0 && (
+                          <Text style={styles.modalItemMeta}>
+                            Mod: {prod.selected_modifiers_json.map(m => m.name).join(', ')}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={styles.modalItemPrice}>${parseFloat(prod.price_at_purchase || 0).toFixed(2)}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={{ fontStyle: 'italic', color: '#999', paddingVertical: 10 }}>
+                    Sin productos especificados.
+                  </Text>
+                )
+              )}
+            </ScrollView>
+
+            {/* Botón Aceptar desde Detalles */}
+            {selectedOrder && (
+              <TouchableOpacity
+                style={[
+                  styles.modalAcceptBtn,
+                  {
+                    backgroundColor: selectedOrder.is_commerce_shipment 
+                      ? '#2980B9' 
+                      : (selectedOrder.is_mercado ? '#8E44AD' : THEME_COLOR),
+                    opacity: acceptingOrderId === selectedOrder.id ? 0.6 : 1
+                  }
+                ]}
+                onPress={() => {
+                  const id = selectedOrder.id;
+                  handleCloseDetails();
+                  handleAcceptOrder(id);
+                }}
+                disabled={acceptingOrderId !== null}
+              >
+                <Text style={styles.modalAcceptBtnText}>ACEPTAR VIAJE</Text>
+                <Ionicons name="arrow-forward-circle" size={24} color="#fff" style={{ marginLeft: 10 }} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -276,7 +488,124 @@ const styles = StyleSheet.create({
   blockTitle: { fontSize: 20, fontWeight: 'bold', color: '#333', marginTop: 20 },
   blockText: { textAlign: 'center', color: '#666', marginTop: 10, lineHeight: 22 },
   profileButton: { backgroundColor: THEME_COLOR, marginTop: 30, paddingVertical: 15, paddingHorizontal: 30, borderRadius: 12 },
-  profileButtonText: { color: 'white', fontWeight: 'bold' }
+  profileButtonText: { color: 'white', fontWeight: 'bold' },
+
+  // Estilos de Ventana Emergente (Modal)
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 35,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalScroll: {
+    marginBottom: 20,
+  },
+  modalSectionTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#555',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  modalAddressText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  mapContainer: {
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 10,
+    backgroundColor: '#eee',
+  },
+  modalMap: {
+    flex: 1,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#f0f0f0',
+    marginVertical: 15,
+  },
+  modalSpecialShipmentBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EBF5FB',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#AED6F1',
+  },
+  modalSpecialShipmentText: {
+    flex: 1,
+    color: '#2980B9',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f9f9f9',
+  },
+  modalItemQty: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: THEME_COLOR,
+    marginRight: 10,
+    minWidth: 40,
+  },
+  modalItemName: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+  },
+  modalItemMeta: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 2,
+  },
+  modalItemPrice: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 10,
+  },
+  modalAcceptBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  modalAcceptBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });
 
 export default AvailableOrdersScreen;

@@ -136,10 +136,20 @@ const CommerceOrdersScreen = () => {
 
       {/* HEADER DE LA PANTALLA */}
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Gestión de Pedidos</Text>
-        <Text style={styles.headerSubtitle}>
-          {pendingOrders.length > 0 ? `Tienes ${pendingOrders.length} por confirmar` : "Todo al día"}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Gestión de Pedidos</Text>
+          <Text style={styles.headerSubtitle}>
+            {pendingOrders.length > 0 ? `Tienes ${pendingOrders.length} por confirmar` : "Todo al día"}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.requestShipmentBtn}
+          onPress={() => navigation.navigate('RequestShipment')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="paper-plane" size={14} color={THEME_COLOR} />
+          <Text style={styles.requestShipmentBtnText}>Solicitar Envío</Text>
+        </TouchableOpacity>
       </View>
 
       {/* CONTENIDO SCROLLABLE */}
@@ -192,10 +202,30 @@ const styles = StyleSheet.create({
   // Header Pantalla
   headerContainer: {
     paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 40 : 60, paddingBottom: 25,
-    justifyContent: 'center'
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 5 },
+
+  requestShipmentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  requestShipmentBtnText: {
+    color: THEME_COLOR,
+    fontWeight: 'bold',
+    fontSize: 13,
+    marginLeft: 6,
+  },
 
   // Tarjeta Blanca
   whiteCard: {
