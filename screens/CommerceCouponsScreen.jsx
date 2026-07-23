@@ -113,6 +113,21 @@ const CommerceCouponsScreen = ({ navigation }) => {
 
     setIsSubmitLoading(true);
 
+    const startDateStr = formData.start_date.trim();
+    const endDateStr = formData.end_date.trim();
+
+    const startIsoStr = startDateStr.includes('T') ? startDateStr : `${startDateStr}T00:00:00Z`;
+    const endIsoStr = endDateStr.includes('T') ? endDateStr : `${endDateStr}T23:59:59Z`;
+
+    const parsedStart = new Date(startIsoStr);
+    const parsedEnd = new Date(endIsoStr);
+
+    if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
+      Alert('Atención', 'Por favor ingresa fechas válidas con el formato YYYY-MM-DD (ej: 2026-07-23).');
+      setIsSubmitLoading(false);
+      return;
+    }
+
     const payload = {
       code: formData.code.trim().toUpperCase(),
       title: formData.title.trim(),
@@ -123,8 +138,8 @@ const CommerceCouponsScreen = ({ navigation }) => {
       min_order_amount: parseFloat(formData.min_order_amount || '0'),
       max_uses_total: formData.max_uses_total ? parseInt(formData.max_uses_total) : null,
       max_uses_per_user: parseInt(formData.max_uses_per_user || '1'),
-      start_date: new Date(formData.start_date).toISOString(),
-      end_date: new Date(formData.end_date + 'T23:59:59').toISOString(),
+      start_date: parsedStart.toISOString(),
+      end_date: parsedEnd.toISOString(),
       is_active: formData.is_active
     };
 
