@@ -12,7 +12,8 @@ import {
   Switch,
   Platform,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  KeyboardAvoidingView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../api';

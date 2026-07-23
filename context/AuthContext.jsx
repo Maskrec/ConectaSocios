@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }) => {
         if (role === 'owner') {
           // Comercio: buscar nuevos pedidos pendientes
           const response = await apiClient.get('/mis-pedidos-comercio/');
-          const orders = response.data || [];
+          const orders = Array.isArray(response.data) ? response.data : (response.data.results || []);
           const pendingOrders = orders.filter(o => o.status === 'pending');
           
           if (pendingOrders.length > 0) {
