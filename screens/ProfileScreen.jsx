@@ -224,36 +224,63 @@ const ProfileScreen = () => {
             </View>
         </TouchableOpacity>
 
-        {/* Deuda con Oficina */}
-        <View style={[
-            styles.walletCardFull,
-            {
-              backgroundColor: (user.amount_to_deliver >= 400) ? '#FDEDEC' : '#F8F9FA',
-              borderColor: (user.amount_to_deliver >= 400) ? '#F5B7B1' : '#EEE',
-              marginTop: 10
-            }
-        ]}>
-            <View style={styles.rowBetween}>
-                <View style={{flex: 1}}>
-                    <Text style={styles.walletLabel}>Deuda a Oficina (Comisiones)</Text>
-                    <Text style={[
-                        styles.walletValue,
-                        {color: (user.amount_to_deliver >= 400) ? DANGER_COLOR : '#333'}
-                    ]}>
-                        ${user.amount_to_deliver || '0.00'}
-                    </Text>
-                    {user.amount_to_deliver >= 400 && (
-                        <Text style={{color: DANGER_COLOR, fontSize: 10, fontWeight: 'bold'}}>
-                            ⚠️ LÍMITE ALCANZADO. LIQUIDA PARA SEGUIR RECIBIENDO PEDIDOS.
+        {/* Deuda con Oficina / Saldo a favor */}
+        {parseFloat(user.amount_to_deliver || '0.00') < 0 ? (
+            <View style={[
+                styles.walletCardFull,
+                {
+                  backgroundColor: '#EAFAF1',
+                  borderColor: '#D5F5E3',
+                  marginTop: 10
+                }
+            ]}>
+                <View style={styles.rowBetween}>
+                    <View style={{flex: 1}}>
+                        <Text style={[styles.walletLabel, {color: SUCCESS_COLOR}]}>Saldo a Favor (Plataforma)</Text>
+                        <Text style={[
+                            styles.walletValue,
+                            {color: SUCCESS_COLOR}
+                        ]}>
+                            ${Math.abs(parseFloat(user.amount_to_deliver)).toFixed(2)}
                         </Text>
-                    )}
-                    <Text style={styles.walletSub}>Comisión acumulada por servicio</Text>
+                        <Text style={{color: '#27AE60', fontSize: 11, marginTop: 5, fontWeight: '500'}}>
+                            Tienes saldo a favor. Contacta a los administradores para recibir tu compensación.
+                        </Text>
+                    </View>
+                    <Ionicons name="gift-outline" size={30} color={SUCCESS_COLOR} />
                 </View>
-                <TouchableOpacity style={styles.payButton} onPress={handleOpenClearDebt} disabled={clearingDebt}>
-                    <Text style={styles.payButtonText}>{clearingDebt ? 'PROCESANDO...' : 'LIQUIDAR'}</Text>
-                </TouchableOpacity>
             </View>
-        </View>
+        ) : (
+            <View style={[
+                styles.walletCardFull,
+                {
+                  backgroundColor: (user.amount_to_deliver >= 400) ? '#FDEDEC' : '#F8F9FA',
+                  borderColor: (user.amount_to_deliver >= 400) ? '#F5B7B1' : '#EEE',
+                  marginTop: 10
+                }
+            ]}>
+                <View style={styles.rowBetween}>
+                    <View style={{flex: 1}}>
+                        <Text style={styles.walletLabel}>Deuda a Oficina (Comisiones)</Text>
+                        <Text style={[
+                            styles.walletValue,
+                            {color: (user.amount_to_deliver >= 400) ? DANGER_COLOR : '#333'}
+                        ]}>
+                            ${parseFloat(user.amount_to_deliver || '0.00').toFixed(2)}
+                        </Text>
+                        {user.amount_to_deliver >= 400 && (
+                            <Text style={{color: DANGER_COLOR, fontSize: 10, fontWeight: 'bold'}}>
+                                ⚠️ LÍMITE ALCANZADO. LIQUIDA PARA SEGUIR RECIBIENDO PEDIDOS.
+                            </Text>
+                        )}
+                        <Text style={styles.walletSub}>Comisión acumulada por servicio</Text>
+                    </View>
+                    <TouchableOpacity style={styles.payButton} onPress={handleOpenClearDebt} disabled={clearingDebt}>
+                        <Text style={styles.payButtonText}>{clearingDebt ? 'PROCESANDO...' : 'LIQUIDAR'}</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        )}
 
         {/* --- 3. VEHÍCULO --- */}
         <Text style={styles.sectionHeader}>Tu Vehículo</Text>

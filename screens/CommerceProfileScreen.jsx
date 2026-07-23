@@ -300,6 +300,12 @@ const CommerceProfileScreen = () => {
              <Ionicons name="chevron-down" size={20} color="#999" />
           </TouchableOpacity>
 
+          {/* Botón Cupones */}
+          <TouchableOpacity style={styles.couponsButton} onPress={() => navigation.navigate('CommerceCoupons')}>
+              <Ionicons name="ticket" size={20} color="#fff" />
+              <Text style={styles.couponsButtonText}>Gestionar Cupones del Negocio</Text>
+          </TouchableOpacity>
+
           {/* Botón Mapa */}
           <TouchableOpacity style={styles.mapButton} onPress={() => navigation.navigate('SetCommerceLocation')}>
               <Ionicons name="map" size={20} color="#fff" />
@@ -398,6 +404,9 @@ const styles = StyleSheet.create({
   selectorText: { fontSize: 16, color: '#333' },
 
   // Botones
+  couponsButton: { flexDirection: 'row', backgroundColor: THEME_COLOR, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 10, marginTop: 10 },
+  couponsButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
+
   mapButton: { flexDirection: 'row', backgroundColor: '#34495E', borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 20, marginTop: 10 },
   mapButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16, marginLeft: 10 },
 

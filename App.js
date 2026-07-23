@@ -30,6 +30,7 @@ import CommerceOrderDetailScreen from './screens/CommerceOrderDetailScreen';
 import CommerceProfileScreen from './screens/CommerceProfileScreen';
 import AddProductScreen from './screens/AddProductScreen';
 import RequestShipmentScreen from './screens/RequestShipmentScreen';
+import CommerceCouponsScreen from './screens/CommerceCouponsScreen';
 
 // Pantallas de Conductor (Taxis)
 import AvailableTripsScreen from './screens/driver/AvailableTripsScreen';
@@ -168,6 +169,7 @@ function AppNavigator() {
                <Stack.Screen name="EditProduct" component={EditProductScreen} options={{ title: 'Editar Producto' }} />
                <Stack.Screen name="SetCommerceLocation" component={SetCommerceLocationScreen} options={{ title: 'Ubicación del Negocio' }} />
                <Stack.Screen name="RequestShipment" component={RequestShipmentScreen} options={{ title: 'Solicitar Envío', headerShown: false }} />
+               <Stack.Screen name="CommerceCoupons" component={CommerceCouponsScreen} options={{ headerShown: false }} />
             </>
           ) : (
              // Si tiene token pero el rol no coincide con nada, cerramos la sesión visualmente
