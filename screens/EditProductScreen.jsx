@@ -199,7 +199,7 @@ const EditProductScreen = ({ route, navigation }) => {
 
             {/* IMAGEN */}
             <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
-              <Image source={{ uri: image || 'https://via.placeholder.com/300' }} style={styles.image} />
+              <Image source={{ uri: image || 'https://placehold.co/300' }} style={styles.image} />
               <View style={styles.cameraIcon}>
                 <Ionicons name="camera" size={20} color="#fff" />
               </View>

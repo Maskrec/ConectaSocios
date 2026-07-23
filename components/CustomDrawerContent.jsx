@@ -12,7 +12,7 @@ const CustomDrawerContent = (props) => {
       {/* --- 1. Información del Usuario --- */}
       <View style={styles.profileContainer}>
         <Image
-          source={{ uri: user?.profile_image || 'https://via.placeholder.com/100' }}
+          source={{ uri: user?.profile_image || 'https://placehold.co/100' }}
           style={styles.profileImage}
         />
         <Text style={styles.profileName}>{user?.first_name} {user?.last_name}</Text>

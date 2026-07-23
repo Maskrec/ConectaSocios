@@ -216,7 +216,7 @@ const CommerceProfileScreen = () => {
           {/* 1. SECCIÓN USUARIO (Avatar) */}
           <View style={styles.userSection}>
             <TouchableOpacity onPress={() => pickImage('user')} style={styles.avatarContainer}>
-              <Image source={{ uri: user?.profile_image || 'https://via.placeholder.com/100' }} style={styles.avatar} />
+              <Image source={{ uri: user?.profile_image || 'https://placehold.co/100' }} style={styles.avatar} />
               <View style={styles.cameraBadge}>
                 <Ionicons name="camera" size={14} color="#fff" />
               </View>

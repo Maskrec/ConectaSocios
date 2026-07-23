@@ -181,7 +181,7 @@ const ProfileScreen = () => {
          <TouchableOpacity onPress={handleChangePhoto} disabled={uploading} style={styles.avatarContainer}>
             {uploading ? <ActivityIndicator size="large" color={THEME_COLOR} /> : (
               <>
-                <Image source={{ uri: user.profile_image || 'https://via.placeholder.com/150' }} style={styles.profileImage} />
+                <Image source={{ uri: user.profile_image || 'https://placehold.co/150' }} style={styles.profileImage} />
                 <View style={styles.cameraBadge}><Ionicons name="camera" size={16} color="#fff" /></View>
               </>
             )}

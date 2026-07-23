@@ -180,7 +180,7 @@ const CommerceProductsScreen = () => {
       >
         {/* Imagen */}
         <Image
-          source={{ uri: item.image || 'https://via.placeholder.com/100' }}
+          source={{ uri: item.image || 'https://placehold.co/100' }}
           style={styles.image}
         />
 
