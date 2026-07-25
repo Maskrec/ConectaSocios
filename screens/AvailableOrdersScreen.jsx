@@ -233,6 +233,49 @@ const AvailableOrdersScreen = () => {
         <View style={styles.divider} />
 
         <View style={styles.cardBody}>
+            {/* Información del Cliente */}
+            <View style={styles.clientBox}>
+              <View style={styles.clientRow}>
+                <Ionicons name="person-circle-outline" size={16} color={THEME_COLOR} style={{ marginRight: 6 }} />
+                <Text style={styles.clientNameText} numberOfLines={1}>
+                  {item.customer_real_name || item.customer_name || 'Cliente'}
+                  {(item.customer_username || item.customer_name) ? <Text style={styles.clientUserText}> (@{item.customer_username || item.customer_name})</Text> : null}
+                </Text>
+              </View>
+              {item.customer_phone ? (
+                <View style={[styles.clientRow, { marginTop: 2 }]}>
+                  <Ionicons name="call-outline" size={13} color="#666" style={{ marginRight: 6 }} />
+                  <Text style={styles.clientPhoneText}>{item.customer_phone}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Vista previa de productos */}
+            {item.items && item.items.length > 0 && (
+              <View style={styles.cardProductsPreview}>
+                {item.items.map((p, idx) => (
+                  <View key={`preview-${idx}`} style={styles.previewRow}>
+                    <Text style={styles.previewQty}>
+                      {p.weight_purchased ? `${p.weight_purchased} kg` : `${parseInt(p.quantity || 1)}x`}
+                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.previewName}>{p.product_name || (p.product ? p.product.name : 'Producto')}</Text>
+                      {p.selected_variant_name ? <Text style={styles.previewMeta}>Var: {p.selected_variant_name}</Text> : null}
+                      {p.selected_modifiers_json && p.selected_modifiers_json.length > 0 ? (
+                        <Text style={styles.previewMeta}>Mod: {p.selected_modifiers_json.map(m => m.name).join(', ')}</Text>
+                      ) : null}
+                      {p.customization_details ? (
+                        <View style={styles.previewNoteTag}>
+                          <Ionicons name="chatbox-ellipses-outline" size={11} color="#D35400" style={{ marginRight: 3 }} />
+                          <Text style={styles.previewNoteText}>{p.customization_details}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
             <View style={styles.row}>
                 <Ionicons name="location-outline" size={16} color="#666" />
                 <Text style={styles.addressText} numberOfLines={2}>
@@ -402,6 +445,24 @@ const AvailableOrdersScreen = () => {
 
               <View style={styles.modalDivider} />
 
+              {/* Datos del Cliente */}
+              {selectedOrder && (
+                <View style={styles.modalClientBox}>
+                  <Text style={styles.modalSectionTitle}>👤 Información del Cliente</Text>
+                  <Text style={styles.modalClientName}>
+                    {selectedOrder.customer_real_name || selectedOrder.customer_name || 'Cliente'}
+                  </Text>
+                  {(selectedOrder.customer_username || selectedOrder.customer_name) ? (
+                    <Text style={styles.modalClientUser}>Usuario: @{selectedOrder.customer_username || selectedOrder.customer_name}</Text>
+                  ) : null}
+                  {selectedOrder.customer_phone ? (
+                    <Text style={styles.modalClientPhone}>Teléfono: {selectedOrder.customer_phone}</Text>
+                  ) : null}
+                </View>
+              )}
+
+              <View style={styles.modalDivider} />
+
               {/* Lista de Productos */}
               <Text style={styles.modalSectionTitle}>📦 Productos en el Pedido</Text>
               {selectedOrder?.is_commerce_shipment ? (
@@ -428,6 +489,12 @@ const AvailableOrdersScreen = () => {
                             Mod: {prod.selected_modifiers_json.map(m => m.name).join(', ')}
                           </Text>
                         )}
+                        {prod.customization_details ? (
+                          <View style={styles.modalNoteTag}>
+                            <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{ marginRight: 4 }} />
+                            <Text style={styles.modalNoteText}>{prod.customization_details}</Text>
+                          </View>
+                        ) : null}
                       </View>
                       <Text style={styles.modalItemPrice}>${parseFloat(prod.price_at_purchase || 0).toFixed(2)}</Text>
                     </View>
@@ -438,6 +505,16 @@ const AvailableOrdersScreen = () => {
                   </Text>
                 )
               )}
+
+              {/* Indicaciones especiales generales del pedido */}
+              {selectedOrder?.special_instructions ? (
+                <View style={styles.modalSpecialInstBox}>
+                  <Ionicons name="information-circle" size={18} color="#D35400" style={{ marginRight: 6 }} />
+                  <Text style={styles.modalSpecialInstText}>
+                    Nota general del cliente: {selectedOrder.special_instructions}
+                  </Text>
+                </View>
+              ) : null}
             </ScrollView>
 
             {/* Botón Aceptar desde Detalles */}
@@ -599,6 +676,134 @@ const styles = StyleSheet.create({
   modalItemMeta: {
     fontSize: 11,
     color: '#888',
+    marginTop: 2,
+  },
+  modalNoteTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  modalNoteText: {
+    fontSize: 11,
+    color: '#D35400',
+    fontStyle: 'italic',
+  },
+  modalSpecialInstBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF2E9',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#F5CBA7',
+  },
+  modalSpecialInstText: {
+    fontSize: 12,
+    color: '#A04000',
+    fontWeight: 'bold',
+    flex: 1,
+  },
+
+  // Cliente en tarjeta y modal
+  clientBox: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+  },
+  clientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clientNameText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+  },
+  clientUserText: {
+    fontSize: 12,
+    fontWeight: 'normal',
+    color: '#666',
+  },
+  clientPhoneText: {
+    fontSize: 12,
+    color: '#444',
+    fontWeight: '500',
+  },
+
+  cardProductsPreview: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  previewQty: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: THEME_COLOR,
+    width: 32,
+  },
+  previewName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+  },
+  previewMeta: {
+    fontSize: 11,
+    color: '#666',
+  },
+  previewNoteTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+    marginTop: 2,
+    alignSelf: 'flex-start',
+  },
+  previewNoteText: {
+    fontSize: 10,
+    color: '#D35400',
+    fontStyle: 'italic',
+  },
+
+  modalClientBox: {
+    backgroundColor: '#F5F6FF',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  modalClientName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 2,
+  },
+  modalClientUser: {
+    fontSize: 13,
+    color: '#555',
+    marginTop: 2,
+  },
+  modalClientPhone: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME_COLOR,
     marginTop: 2,
   },
   modalItemPrice: {

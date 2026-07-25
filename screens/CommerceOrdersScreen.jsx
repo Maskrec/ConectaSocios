@@ -66,6 +66,9 @@ const CommerceOrdersScreen = () => {
   // --- RENDERIZADOR DE TARJETA ---
   const renderOrderCard = (item, isPending) => {
     const hasCourier = !!item.courier_name;
+    const customerRealName = item.customer_real_name || item.customer_name || 'Cliente';
+    const customerUsername = item.customer_username || item.customer_name;
+    const customerPhone = item.customer_phone;
 
     return (
       <TouchableOpacity
@@ -84,6 +87,66 @@ const CommerceOrdersScreen = () => {
             {new Date(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
           </Text>
         </View>
+
+        <View style={styles.divider} />
+
+        {/* Información del Cliente */}
+        <View style={styles.customerBox}>
+          <View style={styles.customerRow}>
+            <Ionicons name="person-circle-outline" size={18} color={THEME_COLOR} style={{marginRight: 6}} />
+            <Text style={styles.customerName} numberOfLines={1}>
+              {customerRealName}
+              {customerUsername ? <Text style={styles.customerUser}> (@{customerUsername})</Text> : null}
+            </Text>
+          </View>
+          {customerPhone ? (
+            <View style={[styles.customerRow, { marginTop: 3 }]}>
+              <Ionicons name="call-outline" size={14} color="#666" style={{marginRight: 6}} />
+              <Text style={styles.customerPhone}>{customerPhone}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Lista de Productos (Comanda rápida) */}
+        {item.items && item.items.length > 0 && (
+          <View style={styles.productsBox}>
+            {item.items.map((prod, idx) => {
+              const pName = prod.product ? prod.product.name : (prod.product_name || "Producto");
+              return (
+                <View key={`card-prod-${idx}`} style={styles.prodRow}>
+                  <Text style={styles.prodQty}>
+                    {prod.weight_purchased ? `${prod.weight_purchased} kg` : `${parseInt(prod.quantity || 1)}x`}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.prodName}>{pName}</Text>
+                    {prod.selected_variant_name ? (
+                      <Text style={styles.prodMeta}>Var: {prod.selected_variant_name}</Text>
+                    ) : null}
+                    {prod.selected_modifiers_json && prod.selected_modifiers_json.length > 0 ? (
+                      <Text style={styles.prodMeta}>
+                        Extras: {prod.selected_modifiers_json.map(m => m.name).join(', ')}
+                      </Text>
+                    ) : null}
+                    {prod.customization_details ? (
+                      <View style={styles.noteTag}>
+                        <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{marginRight: 3}} />
+                        <Text style={styles.noteTagText}>{prod.customization_details}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Indicaciones generales del pedido si existen */}
+        {item.special_instructions ? (
+          <View style={styles.specialInstBox}>
+            <Ionicons name="information-circle-outline" size={14} color="#D35400" style={{marginRight: 4}} />
+            <Text style={styles.specialInstText}>Nota general: {item.special_instructions}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.divider} />
 
@@ -254,6 +317,96 @@ const styles = StyleSheet.create({
   orderDate: { fontSize: 12, color: '#999' },
 
   divider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 10 },
+
+  // Cliente info
+  customerBox: {
+    backgroundColor: THEME_LIGHT,
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 10,
+  },
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  customerName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: THEME_DARK_TEXT,
+    flex: 1,
+  },
+  customerUser: {
+    fontSize: 12,
+    fontWeight: 'normal',
+    color: '#666',
+  },
+  customerPhone: {
+    fontSize: 12,
+    color: '#444',
+    fontWeight: '500',
+  },
+
+  // Productos (Comanda)
+  productsBox: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+  prodRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  prodQty: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: THEME_COLOR,
+    width: 38,
+  },
+  prodName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+  prodMeta: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 1,
+  },
+  noteTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 3,
+    alignSelf: 'flex-start',
+  },
+  noteTagText: {
+    fontSize: 11,
+    color: '#D35400',
+    fontStyle: 'italic',
+  },
+  specialInstBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF2E9',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#F5CBA7',
+  },
+  specialInstText: {
+    fontSize: 12,
+    color: '#A04000',
+    fontWeight: 'bold',
+    flex: 1,
+  },
 
   cardBody: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
 

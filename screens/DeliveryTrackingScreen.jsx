@@ -809,6 +809,21 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
                       <Text style={styles.itemInstruction}>
                         👉 Ve al mostrador de <Text style={{ fontWeight: 'bold' }}>{item.commerce_name || 'Mercado'}</Text> y solicita <Text style={{ fontWeight: 'bold' }}>{item.quantity} {item.product?.unit_type && item.product.unit_type !== 'unit' ? (item.product.unit_type === 'kg' ? 'kilo(s)' : item.product.unit_type === 'liter' ? 'litro(s)' : item.product.unit_type) : 'pza(s)'}</Text> de <Text style={{ fontWeight: 'bold' }}>{item.product_name}</Text>.
                       </Text>
+
+                      {item.selected_variant_name && (
+                        <Text style={{ fontSize: 12, color: '#555', marginTop: 2 }}>Tamaño/Var: {item.selected_variant_name}</Text>
+                      )}
+                      {item.selected_modifiers_json && item.selected_modifiers_json.length > 0 && (
+                        <Text style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                          Extras: {item.selected_modifiers_json.map(m => m.name).join(', ')}
+                        </Text>
+                      )}
+                      {item.customization_details ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', padding: 4, borderRadius: 4, marginTop: 4 }}>
+                          <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{ marginRight: 4 }} />
+                          <Text style={{ fontSize: 11, color: '#D35400', fontStyle: 'italic' }}>{item.customization_details}</Text>
+                        </View>
+                      ) : null}
                     </View>
 
                     <View style={styles.itemActions}>
@@ -883,12 +898,24 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
                             Mod: {item.selected_modifiers_json.map(m => m.name).join(', ')}
                           </Text>
                         )}
+                        {item.customization_details ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', padding: 4, borderRadius: 4, marginTop: 4 }}>
+                            <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{ marginRight: 4 }} />
+                            <Text style={{ fontSize: 11, color: '#D35400', fontStyle: 'italic' }}>{item.customization_details}</Text>
+                          </View>
+                        ) : null}
                       </View>
                     </View>
                     <Text style={styles.productPriceText}>${parseFloat(item.price_at_purchase || 0).toFixed(2)}</Text>
                   </View>
                 ))
               )}
+              {order.special_instructions && !order.is_commerce_shipment ? (
+                <View style={{ backgroundColor: '#FDF2E9', padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: '#F5CBA7' }}>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#A04000' }}>Instrucciones generales del cliente:</Text>
+                  <Text style={{ fontSize: 12, color: '#D35400', marginTop: 2 }}>{order.special_instructions}</Text>
+                </View>
+              ) : null}
             </ScrollView>
           </View>
         )}

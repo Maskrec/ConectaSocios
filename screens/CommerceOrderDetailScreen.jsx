@@ -115,16 +115,30 @@ const CommerceOrderDetailScreen = ({ route, navigation }) => {
           <View style={styles.divider} />
 
           {/* 2. DATOS DE LOGÍSTICA */}
-          <Text style={styles.sectionTitle}>Detalles de Entrega</Text>
+          {/* 2. DATOS DE LOGÍSTICA */}
+          <Text style={styles.sectionTitle}>Detalles del Cliente y Entrega</Text>
           <View style={styles.infoCard}>
             {/* Cliente */}
             <View style={styles.infoRow}>
               <View style={styles.iconBox}>
                 <Ionicons name="person" size={18} color={THEME_COLOR} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Cliente</Text>
-                <Text style={styles.infoValue}>{order.customer_name}</Text>
+                <Text style={styles.infoValue}>
+                  {order.customer_real_name || order.customer_name || 'Cliente'}
+                </Text>
+                <Text style={{ fontSize: 13, color: '#666', marginTop: 1 }}>
+                  Usuario: @{order.customer_username || order.customer_name || 'cliente'}
+                </Text>
+                {order.customer_phone ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <Ionicons name="call-outline" size={14} color={THEME_COLOR} style={{ marginRight: 4 }} />
+                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#333' }}>
+                      {order.customer_phone}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             </View>
 
@@ -136,14 +150,28 @@ const CommerceOrderDetailScreen = ({ route, navigation }) => {
               <View style={[styles.iconBox, { backgroundColor: order.courier_name ? THEME_LIGHT : '#f9f9f9' }]}>
                 <Ionicons name="bicycle" size={18} color={order.courier_name ? THEME_COLOR : '#ccc'} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Repartidor</Text>
                 <Text style={[styles.infoValue, !order.courier_name && { color: '#999', fontStyle: 'italic' }]}>
                   {order.courier_name || 'Buscando repartidor...'}
                 </Text>
+                {order.courier_phone ? (
+                  <Text style={{ fontSize: 13, color: '#666', marginTop: 1 }}>Tel: {order.courier_phone}</Text>
+                ) : null}
               </View>
             </View>
           </View>
+
+          {/* Indicaciones especiales del pedido general si existen */}
+          {order.special_instructions ? (
+            <View style={styles.specialInstructionBox}>
+              <Ionicons name="information-circle" size={20} color="#D35400" style={{ marginRight: 8 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#A04000' }}>Instrucciones Especiales del Pedido:</Text>
+                <Text style={{ fontSize: 13, color: '#D35400', marginTop: 2 }}>{order.special_instructions}</Text>
+              </View>
+            </View>
+          ) : null}
 
           {/* 3. PRODUCTOS (COMANDA) */}
           <Text style={styles.sectionTitle}>Comanda (Cocina)</Text>
@@ -152,9 +180,11 @@ const CommerceOrderDetailScreen = ({ route, navigation }) => {
               const productName = item.product ? item.product.name : (item.product_name || "Producto");
               return (
                 <View key={index} style={styles.productRow}>
-                  {/* Cantidad */}
+                  {/* Cantidad / Peso */}
                   <View style={styles.qtyBox}>
-                    <Text style={styles.qtyText}>{item.quantity}x</Text>
+                    <Text style={styles.qtyText}>
+                      {item.weight_purchased ? `${item.weight_purchased} kg` : `${parseInt(item.quantity || 1)}x`}
+                    </Text>
                   </View>
 
                   {/* Detalles */}
@@ -244,6 +274,17 @@ const styles = StyleSheet.create({
   },
   infoLabel: { fontSize: 12, color: '#999' },
   infoValue: { fontSize: 15, fontWeight: '600', color: '#333' },
+
+  specialInstructionBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF2E9',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#F5CBA7',
+  },
 
   // Productos
   productsContainer: { backgroundColor: '#f9f9f9', borderRadius: 12, padding: 15 },
