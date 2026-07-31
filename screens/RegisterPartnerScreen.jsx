@@ -9,12 +9,15 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import Alert from '../components/AlertPolyfill';
+import { useAuth } from '../context/AuthContext';
+import { signInWithGoogleFirebase, signInWithFacebookFirebase } from '../services/FirebaseAuthService';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const WHATSAPP_NUMBER = '524463168380'; // Número de WhatsApp del administrador (con código de país)
 
 const RegisterPartnerScreen = () => {
   const navigation = useNavigation();
+  const { loginWithSocialFirebase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [categories, setCategories] = useState([]);
@@ -26,8 +29,77 @@ const RegisterPartnerScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: '', password: '', first_name: '', last_name: '', phone_number: '',
+    commerce_name: '', vehicle_type: 'moto',
     car_brand: '', car_model: '', license_plate: '', is_taxi_driver: false
   });
+
+  const handleGoogleRegister = async () => {
+    if (!acceptedTerms) {
+      return Alert.alert("Términos y Condiciones", "Debes aceptar los términos y condiciones para continuar.");
+    }
+    if (role === 'owner' && !selectedCategory) {
+      return Alert.alert("Falta Categoría", "Por favor selecciona el giro de tu comercio.");
+    }
+
+    setLoading(true);
+    const authRes = await signInWithGoogleFirebase();
+    if (authRes.success) {
+      const extraData = {
+        role,
+        category_id: role === 'owner' ? selectedCategory?.id : null,
+        commerce_name: formData.commerce_name,
+        phone_number: formData.phone_number,
+        vehicle_type: formData.vehicle_type,
+        car_brand: formData.car_brand,
+        car_model: formData.car_model,
+        license_plate: formData.license_plate,
+        is_taxi_driver: formData.is_taxi_driver
+      };
+      const loginRes = await loginWithSocialFirebase(authRes.idToken, extraData);
+      if (loginRes.error === 'account_inactive') {
+        setShowVerificationModal(true);
+      } else if (loginRes.error) {
+        Alert.alert("Error", loginRes.error);
+      }
+    } else {
+      Alert.alert("Error", authRes.error);
+    }
+    setLoading(false);
+  };
+
+  const handleFacebookRegister = async () => {
+    if (!acceptedTerms) {
+      return Alert.alert("Términos y Condiciones", "Debes aceptar los términos y condiciones para continuar.");
+    }
+    if (role === 'owner' && !selectedCategory) {
+      return Alert.alert("Falta Categoría", "Por favor selecciona el giro de tu comercio.");
+    }
+
+    setLoading(true);
+    const authRes = await signInWithFacebookFirebase();
+    if (authRes.success) {
+      const extraData = {
+        role,
+        category_id: role === 'owner' ? selectedCategory?.id : null,
+        commerce_name: formData.commerce_name,
+        phone_number: formData.phone_number,
+        vehicle_type: formData.vehicle_type,
+        car_brand: formData.car_brand,
+        car_model: formData.car_model,
+        license_plate: formData.license_plate,
+        is_taxi_driver: formData.is_taxi_driver
+      };
+      const loginRes = await loginWithSocialFirebase(authRes.idToken, extraData);
+      if (loginRes.error === 'account_inactive') {
+        setShowVerificationModal(true);
+      } else if (loginRes.error) {
+        Alert.alert("Error", loginRes.error);
+      }
+    } else {
+      Alert.alert("Error", authRes.error);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -146,13 +218,40 @@ const RegisterPartnerScreen = () => {
             </View>
 
             {role === 'owner' && (
-              <TouchableOpacity style={styles.categorySelector} onPress={() => setShowCategoryModal(true)}>
-                  <Ionicons name={selectedCategory ? selectedCategory.icon_name : "grid-outline"} size={20} color="gray" style={styles.icon} />
-                  <Text style={[styles.input, {textAlignVertical: 'center', color: selectedCategory ? 'black' : '#999'}]}>
-                      {selectedCategory ? selectedCategory.name : "Selecciona el Giro del Negocio"}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="gray" />
-              </TouchableOpacity>
+              <>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="storefront-outline" size={20} color="gray" style={styles.icon} />
+                  <TextInput 
+                    placeholder="Nombre de tu Comercio / Negocio" 
+                    style={styles.input} 
+                    onChangeText={(t) => handleChange('commerce_name', t)} 
+                    value={formData.commerce_name} 
+                  />
+                </View>
+                <TouchableOpacity style={styles.categorySelector} onPress={() => setShowCategoryModal(true)}>
+                    <Ionicons name={selectedCategory ? selectedCategory.icon_name : "grid-outline"} size={20} color="gray" style={styles.icon} />
+                    <Text style={[styles.input, {textAlignVertical: 'center', color: selectedCategory ? 'black' : '#999'}]}>
+                        {selectedCategory ? selectedCategory.name : "Selecciona el Giro del Negocio"}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="gray" />
+                </TouchableOpacity>
+              </>
+            )}
+
+            {role === 'courier' && (
+              <View style={styles.inputContainer}>
+                <Ionicons name="bicycle-outline" size={20} color="gray" style={styles.icon} />
+                <Text style={{ flex: 1, color: '#333', fontSize: 14 }}>Vehículo:</Text>
+                <TouchableOpacity onPress={() => handleChange('vehicle_type', 'moto')} style={{ paddingHorizontal: 8 }}>
+                  <Text style={{ fontWeight: formData.vehicle_type === 'moto' ? 'bold' : 'normal', color: formData.vehicle_type === 'moto' ? '#FF6B6B' : '#666' }}>Moto</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleChange('vehicle_type', 'bike')} style={{ paddingHorizontal: 8 }}>
+                  <Text style={{ fontWeight: formData.vehicle_type === 'bike' ? 'bold' : 'normal', color: formData.vehicle_type === 'bike' ? '#FF6B6B' : '#666' }}>Bici</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleChange('vehicle_type', 'car')} style={{ paddingHorizontal: 8 }}>
+                  <Text style={{ fontWeight: formData.vehicle_type === 'car' ? 'bold' : 'normal', color: formData.vehicle_type === 'car' ? '#FF6B6B' : '#666' }}>Auto</Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {role === 'driver' && (
@@ -241,6 +340,34 @@ const RegisterPartnerScreen = () => {
             <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
               {loading ? <ActivityIndicator color="white" /> : <Text style={styles.registerButtonText}>CONTINUAR</Text>}
             </TouchableOpacity>
+
+            {/* SECCIÓN DE AUTENTICACIÓN SOCIAL PARA SOCIOS */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 18, width: '100%' }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: '#E0E0E0' }} />
+              <Text style={{ marginHorizontal: 10, color: '#888', fontSize: 13, fontWeight: '600' }}>o regístrate con</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: '#E0E0E0' }} />
+            </View>
+
+            <View style={{ width: '100%', marginBottom: 10 }}>
+              <TouchableOpacity 
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: '#E0E0E0',
+                  backgroundColor: '#FFFFFF',
+                  width: '100%'
+                }}
+                onPress={handleGoogleRegister}
+                disabled={loading}
+              >
+                <Ionicons name="logo-google" size={20} color="#EA4335" style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#333' }}>Regístrate con Google</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={{marginTop: 20}}>
               <Text style={styles.linkText}>¿Ya tienes cuenta? Inicia Sesión</Text>

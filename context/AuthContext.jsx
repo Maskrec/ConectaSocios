@@ -301,6 +301,64 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // --- FUNCIÓN LOGIN SOCIAL FIREBASE (GOOGLE & FACEBOOK) ---
+  const loginWithSocialFirebase = async (idToken, extraData = {}) => {
+    try {
+      if (!idToken) {
+        return { error: 'token_missing' };
+      }
+
+      const response = await axios.post(`${API_URL}/api/auth/firebase/`, {
+        id_token: idToken,
+        role: extraData.role || 'courier',
+        ...extraData,
+      });
+
+      const token = response.data.token;
+      await SecureStorage.setItem('authToken', token);
+      setAuthToken(token);
+      apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
+
+      const profileResponse = await apiClient.get('/perfil/');
+      const userData = profileResponse.data;
+      const userRole = userData.role;
+
+      if (userRole !== 'courier' && userRole !== 'owner' && userRole !== 'driver') {
+        Alert.alert('Error', 'Esta cuenta no tiene un rol válido para la App de Socios.');
+        await logout();
+        return { error: 'invalid_role' };
+      }
+
+      setRole(userRole);
+      setUser(userData);
+      return { success: true, role: userRole };
+    } catch (error) {
+      console.error("Error en login social Firebase:", error.response?.data || error.message);
+      if (error.response) {
+        if (error.response.status === 403 && error.response.data.error === 'account_inactive') {
+          return { error: 'account_inactive' };
+        }
+      }
+      return { error: error.response?.data?.detail || 'Error al autenticar con Firebase' };
+    }
+  };
+
+  // --- FUNCIÓN VINCULAR CUENTA EXISTENTE CON GOOGLE ---
+  const linkGoogleAccount = async (idToken) => {
+    try {
+      if (!idToken) return { error: 'token_missing' };
+      const response = await apiClient.post('/auth/link-google/', { id_token: idToken });
+      if (response.data?.user) {
+        setUser(response.data.user);
+      }
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      console.error("Error vinculando cuenta con Google:", error.response?.data || error.message);
+      const msg = error.response?.data?.detail || 'Error al vincular con Google';
+      return { success: false, error: msg };
+    }
+  };
+
   // --- FUNCIÓN LOGOUT ---
   const logout = async () => {
     try {
@@ -317,7 +375,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, authToken, role, isLoading, login, logout, isActivo, toggleAvailability }}>
+    <AuthContext.Provider value={{ user, setUser, authToken, role, isLoading, login, loginWithSocialFirebase, linkGoogleAccount, logout, isActivo, toggleAvailability }}>
       {children}
     </AuthContext.Provider>
   );

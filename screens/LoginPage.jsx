@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native'; 
 import apiClient from '../api';
+import { signInWithGoogleFirebase, signInWithFacebookFirebase } from '../services/FirebaseAuthService';
 
 const WHATSAPP_NUMBER = '524463168380'; // Número de WhatsApp del soporte (con código de país)
 
@@ -16,7 +17,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
+  const { login, loginWithSocialFirebase } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showInactiveModal, setShowInactiveModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
@@ -29,6 +30,38 @@ const LoginPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetStep, setResetStep] = useState(1);
   const navigation = useNavigation();
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    const authRes = await signInWithGoogleFirebase();
+    if (authRes.success) {
+      const loginRes = await loginWithSocialFirebase(authRes.idToken);
+      if (loginRes.error === 'account_inactive') {
+        setShowInactiveModal(true);
+      } else if (loginRes.error) {
+        Alert.alert("Error", loginRes.error);
+      }
+    } else {
+      Alert.alert("Error", authRes.error);
+    }
+    setIsLoading(false);
+  };
+
+  const handleFacebookLogin = async () => {
+    setIsLoading(true);
+    const authRes = await signInWithFacebookFirebase();
+    if (authRes.success) {
+      const loginRes = await loginWithSocialFirebase(authRes.idToken);
+      if (loginRes.error === 'account_inactive') {
+        setShowInactiveModal(true);
+      } else if (loginRes.error) {
+        Alert.alert("Error", loginRes.error);
+      }
+    } else {
+      Alert.alert("Error", authRes.error);
+    }
+    setIsLoading(false);
+  };
 
   const handlePasswordReset = async () => {
     if (resetStep === 1) {
@@ -209,6 +242,34 @@ const LoginPage = () => {
                 : <Ionicons name="arrow-forward" size={28} color="white" />
               }
             </TouchableOpacity>
+
+            {/* SECCIÓN DE AUTENTICACIÓN SOCIAL */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 18, width: '100%' }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: '#E0E0E0' }} />
+              <Text style={{ marginHorizontal: 10, color: '#888', fontSize: 13, fontWeight: '600' }}>o inicia sesión con</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: '#E0E0E0' }} />
+            </View>
+
+            <View style={{ width: '100%', marginBottom: 15 }}>
+              <TouchableOpacity 
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: '#E0E0E0',
+                  backgroundColor: '#FFFFFF',
+                  width: '100%'
+                }}
+                onPress={handleGoogleLogin}
+                disabled={isLoading}
+              >
+                <Ionicons name="logo-google" size={20} color="#EA4335" style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#333' }}>Continuar con Google</Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.legalText}>
               Al presionar "Entrar" aceptas nuestros{"\n"}

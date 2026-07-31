@@ -22,6 +22,7 @@ import SetCommerceLocationScreen from './screens/SetCommerceLocationScreen';
 import RegisterPartnerScreen from './screens/RegisterPartnerScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import TermsScreen from './screens/TermsScreen';
+import GoogleLinkModal from './components/GoogleLinkModal';
 
 // Pantallas de Comercio
 import CommerceOrdersScreen from './screens/CommerceOrdersScreen';
@@ -186,6 +187,7 @@ function AppNavigator() {
           </>
         )}
       </Stack.Navigator>
+      {authToken && <GoogleLinkModal />}
     </NavigationContainer>
   );
 }
