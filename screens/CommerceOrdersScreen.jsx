@@ -8,7 +8,9 @@ import {
   RefreshControl,
   StatusBar,
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal,
+  TextInput
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import apiClient from '../api';
@@ -25,6 +27,10 @@ const CommerceOrdersScreen = () => {
   const [inProgressOrders, setInProgressOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigation = useNavigation();
+
+  const [isPrepTimeModalVisible, setIsPrepTimeModalVisible] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [customPrepTime, setCustomPrepTime] = useState('15');
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -53,9 +59,24 @@ const CommerceOrdersScreen = () => {
     }, [])
   );
 
-  const handleConfirmOrder = async (orderId) => {
+  const handleConfirmOrder = (orderId) => {
+    setSelectedOrderId(orderId);
+    setCustomPrepTime('15'); // default
+    setIsPrepTimeModalVisible(true);
+  };
+
+  const submitConfirmOrder = async () => {
+    if (!selectedOrderId) return;
+    const timeNum = parseInt(customPrepTime);
+    if (isNaN(timeNum) || timeNum <= 0) {
+      Alert.alert("Error", "Por favor ingresa un tiempo válido en minutos.");
+      return;
+    }
+    setIsPrepTimeModalVisible(false);
     try {
-      await apiClient.post(`/pedidos/${orderId}/confirmar/`);
+      await apiClient.post(`/pedidos/${selectedOrderId}/confirmar/`, {
+        preparation_time_minutes: timeNum
+      });
       Alert.alert("¡Pedido Aceptado! 👨‍🍳", "Se ha notificado al repartidor.");
       fetchOrders();
     } catch (error) {
@@ -255,6 +276,72 @@ const CommerceOrdersScreen = () => {
           <View style={{height: 80}} />
         </ScrollView>
       </View>
+
+      {/* Modal para ingresar tiempo de preparación */}
+      <Modal
+        visible={isPrepTimeModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsPrepTimeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Tiempo de Preparación</Text>
+            <Text style={styles.modalSubtitle}>¿En cuántos minutos estará listo el pedido?</Text>
+
+            {/* Opciones rápidas */}
+            <View style={styles.quickTimeGrid}>
+              {['10', '15', '20', '30', '40', '50'].map((time) => (
+                <TouchableOpacity
+                  key={`quick-${time}`}
+                  style={[
+                    styles.quickTimeButton,
+                    customPrepTime === time && styles.quickTimeButtonSelected
+                  ]}
+                  onPress={() => setCustomPrepTime(time)}
+                >
+                  <Text
+                    style={[
+                      styles.quickTimeText,
+                      customPrepTime === time && styles.quickTimeTextSelected
+                    ]}
+                  >
+                    {time} min
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Input personalizado */}
+            <View style={styles.customInputContainer}>
+              <Text style={styles.customInputLabel}>Otro tiempo (minutos):</Text>
+              <TextInput
+                style={styles.customTextInput}
+                keyboardType="number-pad"
+                value={customPrepTime}
+                onChangeText={setCustomPrepTime}
+                maxLength={3}
+              />
+            </View>
+
+            {/* Botones de acción */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelBtn]}
+                onPress={() => setIsPrepTimeModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmBtn]}
+                onPress={submitConfirmOrder}
+              >
+                <Text style={styles.confirmBtnText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -442,6 +529,125 @@ const styles = StyleSheet.create({
   // Empty State
   emptyState: { alignItems: 'center', paddingVertical: 20 },
   emptyText: { color: '#999', fontStyle: 'italic' },
+
+  // Estilos del Modal de Tiempo de Preparación
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 340,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 }
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20
+  },
+  quickTimeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 15
+  },
+  quickTimeButton: {
+    width: '30%',
+    backgroundColor: '#F2F4F4',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E8E8'
+  },
+  quickTimeButtonSelected: {
+    backgroundColor: THEME_LIGHT,
+    borderColor: THEME_COLOR
+  },
+  quickTimeText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '600'
+  },
+  quickTimeTextSelected: {
+    color: THEME_DARK_TEXT
+  },
+  customInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 25,
+    backgroundColor: '#F8F9F9',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E8E8'
+  },
+  customInputLabel: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '500'
+  },
+  customTextInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#BDC3C7',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    width: 60,
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  cancelBtn: {
+    backgroundColor: '#BDC3C7',
+    marginRight: 10
+  },
+  cancelBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14
+  },
+  confirmBtn: {
+    backgroundColor: THEME_COLOR
+  },
+  confirmBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14
+  },
 });
 
 export default CommerceOrdersScreen;
