@@ -58,7 +58,8 @@ const CommerceProfileScreen = () => {
           logo: commerceRes.data.logo,
           category: commerceRes.data.category,
           opening_time: commerceRes.data.opening_time ? commerceRes.data.opening_time.substring(0, 5) : '',
-          closing_time: commerceRes.data.closing_time ? commerceRes.data.closing_time.substring(0, 5) : ''
+          closing_time: commerceRes.data.closing_time ? commerceRes.data.closing_time.substring(0, 5) : '',
+          service_days: commerceRes.data.service_days || ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom']
         });
 
         // Extraer datos si viene paginado (como objeto con .results) o si es un arreglo directo
@@ -184,7 +185,8 @@ const CommerceProfileScreen = () => {
             name: commerceData.name, 
             address: commerceData.address,
             opening_time: opTime ? `${opTime}:00` : null,
-            closing_time: clTime ? `${clTime}:00` : null
+            closing_time: clTime ? `${clTime}:00` : null,
+            service_days: commerceData.service_days || ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom']
         });
         Alert.alert("Éxito", "Información guardada correctamente.");
       } catch (error) { Alert.alert("Error", "No se pudo guardar."); }
@@ -266,6 +268,50 @@ const CommerceProfileScreen = () => {
               value={commerceData.address}
               onChangeText={t => setCommerceData({...commerceData, address: t})}
             />
+          </View>
+
+          {/* Selector de Días de Servicio */}
+          <Text style={styles.label}>Días de Servicio</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }}>
+            {[
+              { id: 'lun', label: 'L' },
+              { id: 'mar', label: 'M' },
+              { id: 'mie', label: 'M' },
+              { id: 'jue', label: 'J' },
+              { id: 'vie', label: 'V' },
+              { id: 'sab', label: 'S' },
+              { id: 'dom', label: 'D' },
+            ].map(day => {
+              const activeDays = Array.isArray(commerceData.service_days) ? commerceData.service_days : ['lun','mar','mie','jue','vie','sab','dom'];
+              const isSelected = activeDays.includes(day.id);
+              return (
+                <TouchableOpacity
+                  key={day.id}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: isSelected ? THEME_COLOR : '#EAEAEA',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    elevation: isSelected ? 2 : 0
+                  }}
+                  onPress={() => {
+                    let updated = [...activeDays];
+                    if (isSelected) {
+                      updated = updated.filter(d => d !== day.id);
+                    } else {
+                      updated.push(day.id);
+                    }
+                    setCommerceData({ ...commerceData, service_days: updated });
+                  }}
+                >
+                  <Text style={{ color: isSelected ? '#fff' : '#666', fontWeight: 'bold', fontSize: 13 }}>
+                    {day.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <Text style={styles.label}>Horario de Atención (Apertura y Cierre)</Text>
