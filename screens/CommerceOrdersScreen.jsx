@@ -148,6 +148,13 @@ const CommerceOrdersScreen = () => {
                         Extras: {prod.selected_modifiers_json.map(m => m.name).join(', ')}
                       </Text>
                     ) : null}
+                    {prod.combo_items_json && prod.combo_items_json.length > 0 ? (
+                      <View style={{ marginTop: 2, backgroundColor: '#FFF0F0', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FF6B6B' }}>
+                          Incluye: {prod.combo_items_json.map(c => `${c.quantity}x ${c.product_name || c.group_name}`).join(', ')}
+                        </Text>
+                      </View>
+                    ) : null}
                     {prod.customization_details ? (
                       <View style={styles.noteTag}>
                         <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{marginRight: 3}} />

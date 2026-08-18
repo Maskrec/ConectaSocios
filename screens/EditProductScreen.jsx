@@ -42,8 +42,16 @@ const EditProductScreen = ({ route, navigation }) => {
 
   // Switches
   const [isAvailable, setIsAvailable] = useState(true);
-  const [isCustomizable, setIsCustomizable] = useState(false); // Agregamos este para consistencia
+  const [isCustomizable, setIsCustomizable] = useState(false);
+  const [isCombo, setIsCombo] = useState(false);
   const [saleLocation, setSaleLocation] = useState('feed');
+
+  // Estados para Combos
+  const [myProducts, setMyProducts] = useState([]);
+  const [comboItems, setComboItems] = useState([]);
+  const [selectedComboProduct, setSelectedComboProduct] = useState(null);
+  const [comboItemQty, setComboItemQty] = useState('1');
+  const [comboItemGroup, setComboItemGroup] = useState('');
 
   // Estados de Variantes y Modificadores
   const [variantGroupName, setVariantGroupName] = useState('Elige tu tamaño');
@@ -62,11 +70,13 @@ const EditProductScreen = ({ route, navigation }) => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await apiClient.get(`/mis-productos/${productId}/`);
+        const [response, prodsRes] = await Promise.all([
+          apiClient.get(`/mis-productos/${productId}/`),
+          apiClient.get('/mis-productos/')
+        ]);
         const p = response.data;
         setName(p.name);
         
-        // Determinar qué precio mostrar
         const displayPrice = p.unit_type && p.unit_type !== 'unit' ? (p.unit_price || p.price) : p.price;
         setPrice(displayPrice ? displayPrice.toString() : '');
         
@@ -78,9 +88,13 @@ const EditProductScreen = ({ route, navigation }) => {
         setImage(p.image);
         setIsAvailable(p.is_available);
         setIsCustomizable(p.is_customizable || false);
+        setIsCombo(p.is_combo || false);
+        setComboItems(p.combo_items || []);
         setSaleLocation(p.sale_location || 'feed');
 
-        // Cargar variantes y modificadores
+        const prodsList = Array.isArray(prodsRes.data) ? prodsRes.data : (prodsRes.data.results || []);
+        setMyProducts(prodsList.filter(item => item.id !== parseInt(productId)));
+
         setVariantGroupName(p.variant_group_name || 'Elige tu tamaño');
         setModifierGroupName(p.modifier_group_name || 'Ingredientes Extra');
         setVariants(p.variants || []);
@@ -111,6 +125,7 @@ const EditProductScreen = ({ route, navigation }) => {
     formData.append('description', description);
     formData.append('is_available', isAvailable);
     formData.append('is_customizable', isCustomizable);
+    formData.append('is_combo', isCombo);
     formData.append('sale_location', saleLocation);
 
     formData.append('unit_type', unitType);
@@ -121,11 +136,12 @@ const EditProductScreen = ({ route, navigation }) => {
       if (maxWeight) formData.append('max_weight_kg', maxWeight);
     }
 
-    // Variantes y modificadores
+    // Variantes, modificadores y combos
     formData.append('variant_group_name', variantGroupName);
     formData.append('modifier_group_name', modifierGroupName);
     formData.append('variants', JSON.stringify(variants));
     formData.append('modifiers', JSON.stringify(modifiers));
+    formData.append('combo_items', JSON.stringify(comboItems));
 
     // Solo enviamos imagen si es una URI local (no empieza con http)
     if (image && !image.startsWith('http')) {
@@ -306,6 +322,105 @@ const EditProductScreen = ({ route, navigation }) => {
                   trackColor={{ false: "#ccc", true: THEME_COLOR }}
                 />
             </View>
+
+            {/* --- SWITCH DE COMBO / PAQUETE --- */}
+            <View style={styles.switchRow}>
+                <View style={{flex: 1}}>
+                  <Text style={styles.switchLabel}>¿Es un Combo o Paquete? 🎁</Text>
+                  <Text style={styles.switchSubLabel}>Agrupa varios productos a un precio de combo</Text>
+                </View>
+                <Switch
+                  value={isCombo}
+                  onValueChange={setIsCombo}
+                  trackColor={{ false: "#ccc", true: THEME_COLOR }}
+                />
+            </View>
+
+            {isCombo && (
+              <View style={{ backgroundColor: '#F8F9FA', padding: 15, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: '#EAEAEA' }}>
+                <Text style={styles.labelSection}>Productos del Paquete 🎁</Text>
+
+                {comboItems.map((c, i) => (
+                  <View key={i} style={styles.itemRowOption}>
+                    <Text style={styles.optionText}>
+                      {c.quantity}x {c.product_name || c.group_name || 'Opción de Combo'} {c.group_name ? `(${c.group_name})` : ''}
+                    </Text>
+                    <TouchableOpacity onPress={() => setComboItems(comboItems.filter((_, idx) => idx !== i))}>
+                      <Ionicons name="trash-outline" size={20} color={DANGER_COLOR} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                <Text style={[styles.label, { marginTop: 10 }]}>Agregar Producto al Paquete:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                  {myProducts.filter(p => !p.is_combo).map((p) => {
+                    const isSelected = selectedComboProduct?.id === p.id;
+                    return (
+                      <TouchableOpacity
+                        key={p.id}
+                        style={{
+                          backgroundColor: isSelected ? THEME_COLOR : '#fff',
+                          borderWidth: 1,
+                          borderColor: isSelected ? THEME_COLOR : '#DDD',
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          marginRight: 8,
+                        }}
+                        onPress={() => setSelectedComboProduct(p)}
+                      >
+                        <Text style={{ color: isSelected ? '#fff' : '#444', fontSize: 12, fontWeight: 'bold' }}>
+                          {p.name} (${parseFloat(p.price).toFixed(2)})
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <TextInput
+                    style={[styles.inlineInput, { flex: 0.3, marginRight: 8 }]}
+                    placeholder="Cant."
+                    keyboardType="numeric"
+                    value={comboItemQty}
+                    onChangeText={setComboItemQty}
+                  />
+                  <TextInput
+                    style={[styles.inlineInput, { flex: 0.7 }]}
+                    placeholder="Opción/Grupo (ej: Acompañamiento)"
+                    value={comboItemGroup}
+                    onChangeText={setComboItemGroup}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: THEME_COLOR,
+                    padding: 10,
+                    borderRadius: 8,
+                    alignItems: 'center'
+                  }}
+                  onPress={() => {
+                    if (!selectedComboProduct && !comboItemGroup) {
+                      return Alert.alert("Atención", "Selecciona un producto o escribe un grupo/opción.");
+                    }
+                    const newComboItem = {
+                      product: selectedComboProduct ? selectedComboProduct.id : null,
+                      product_name: selectedComboProduct ? selectedComboProduct.name : comboItemGroup,
+                      quantity: parseInt(comboItemQty) || 1,
+                      group_name: comboItemGroup,
+                      allow_modifiers: true
+                    };
+                    setComboItems([...comboItems, newComboItem]);
+                    setSelectedComboProduct(null);
+                    setComboItemQty('1');
+                    setComboItemGroup('');
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>+ Añadir al Paquete</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* VARIANTES */}
             <Text style={styles.labelSection}>Variantes (Formatos / Tamaños)</Text>

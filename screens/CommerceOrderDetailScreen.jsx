@@ -198,6 +198,13 @@ const CommerceOrderDetailScreen = ({ route, navigation }) => {
                         Extras: {item.selected_modifiers_json.map(m => m.name).join(', ')}
                       </Text>
                     ) : null}
+                    {item.combo_items_json && item.combo_items_json.length > 0 ? (
+                      <View style={{ marginTop: 4, backgroundColor: '#FFF0F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#FF6B6B' }}>
+                          Incluye en paquete: {item.combo_items_json.map(c => `${c.quantity}x ${c.product_name || c.group_name}`).join(', ')}
+                        </Text>
+                      </View>
+                    ) : null}
                     {/* Notas de personalización destacadas */}
                     {item.customization_details ? (
                       <View style={styles.noteContainer}>

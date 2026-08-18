@@ -186,7 +186,14 @@ const CommerceProductsScreen = () => {
 
         {/* Info Central */}
         <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.name, { flex: 1 }]} numberOfLines={1}>{item.name}</Text>
+            {item.is_combo && (
+              <View style={{ backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#FFD2D2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 6 }}>
+                <Text style={{ color: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }}>🎁 COMBO</Text>
+              </View>
+            )}
+          </View>
           <Text style={[styles.price, isWeightBased && { marginBottom: 2 }]}>
             {getPriceDisplay(item)}
           </Text>

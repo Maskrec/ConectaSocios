@@ -40,7 +40,15 @@ const AddProductScreen = ({ navigation }) => {
 
   // Estado para el interruptor
   const [isCustomizable, setIsCustomizable] = useState(false);
+  const [isCombo, setIsCombo] = useState(false);
   const [saleLocation, setSaleLocation] = useState('feed');
+
+  // Estados para Combos
+  const [myProducts, setMyProducts] = useState([]);
+  const [comboItems, setComboItems] = useState([]);
+  const [selectedComboProduct, setSelectedComboProduct] = useState(null);
+  const [comboItemQty, setComboItemQty] = useState('1');
+  const [comboItemGroup, setComboItemGroup] = useState('');
 
   // Estados de Variantes y Modificadores
   const [variantGroupName, setVariantGroupName] = useState('Elige tu tamaño');
@@ -54,6 +62,19 @@ const AddProductScreen = ({ navigation }) => {
   const [newModifierPrice, setNewModifierPrice] = useState('');
 
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await apiClient.get('/mis-productos/');
+        const list = Array.isArray(res.data) ? res.data : (res.data.results || []);
+        setMyProducts(list);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchProducts();
+  }, []);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -85,13 +106,15 @@ const AddProductScreen = ({ navigation }) => {
 
     // Enviamos el valor del Switch
     formData.append('is_customizable', isCustomizable);
+    formData.append('is_combo', isCombo);
     formData.append('sale_location', saleLocation);
 
-    // Variantes y modificadores
+    // Variantes, modificadores y combos
     formData.append('variant_group_name', variantGroupName);
     formData.append('modifier_group_name', modifierGroupName);
     formData.append('variants', JSON.stringify(variants));
     formData.append('modifiers', JSON.stringify(modifiers));
+    formData.append('combo_items', JSON.stringify(comboItems));
 
     if (image) {
       if (Platform.OS === 'web') {
@@ -246,12 +269,114 @@ const AddProductScreen = ({ navigation }) => {
                 </Text>
               </View>
               <Switch
-                trackColor={{ false: "#767577", true: THEME_COLOR }} // Track Teal cuando está activo
+                trackColor={{ false: "#767577", true: THEME_COLOR }}
                 thumbColor={isCustomizable ? "#fff" : "#f4f3f4"}
                 onValueChange={setIsCustomizable}
                 value={isCustomizable}
               />
             </View>
+
+            {/* --- SWITCH DE COMBO / PAQUETE --- */}
+            <View style={styles.switchContainer}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={styles.switchTitle}>¿Es un Combo o Paquete? 🎁</Text>
+                <Text style={styles.switchSubtitle}>
+                  Activa esto para crear un paquete especial agrupando productos de tu menú a un precio único.
+                </Text>
+              </View>
+              <Switch
+                trackColor={{ false: "#767577", true: THEME_COLOR }}
+                thumbColor={isCombo ? "#fff" : "#f4f3f4"}
+                onValueChange={setIsCombo}
+                value={isCombo}
+              />
+            </View>
+
+            {isCombo && (
+              <View style={{ backgroundColor: '#F8F9FA', padding: 15, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: '#EAEAEA' }}>
+                <Text style={styles.labelSection}>Productos del Paquete 🎁</Text>
+
+                {comboItems.map((c, i) => (
+                  <View key={i} style={styles.itemRowOption}>
+                    <Text style={styles.optionText}>
+                      {c.quantity}x {c.product_name || c.group_name || 'Opción de Combo'} {c.group_name ? `(${c.group_name})` : ''}
+                    </Text>
+                    <TouchableOpacity onPress={() => setComboItems(comboItems.filter((_, idx) => idx !== i))}>
+                      <Ionicons name="trash-outline" size={20} color={DANGER_COLOR} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                <Text style={[styles.label, { marginTop: 10 }]}>Agregar Producto al Paquete:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                  {myProducts.filter(p => !p.is_combo).map((p) => {
+                    const isSelected = selectedComboProduct?.id === p.id;
+                    return (
+                      <TouchableOpacity
+                        key={p.id}
+                        style={{
+                          backgroundColor: isSelected ? THEME_COLOR : '#fff',
+                          borderWidth: 1,
+                          borderColor: isSelected ? THEME_COLOR : '#DDD',
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          marginRight: 8,
+                        }}
+                        onPress={() => setSelectedComboProduct(p)}
+                      >
+                        <Text style={{ color: isSelected ? '#fff' : '#444', fontSize: 12, fontWeight: 'bold' }}>
+                          {p.name} (${parseFloat(p.price).toFixed(2)})
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <TextInput
+                    style={[styles.inlineInput, { flex: 0.3, marginRight: 8 }]}
+                    placeholder="Cant."
+                    keyboardType="numeric"
+                    value={comboItemQty}
+                    onChangeText={setComboItemQty}
+                  />
+                  <TextInput
+                    style={[styles.inlineInput, { flex: 0.7 }]}
+                    placeholder="Opción/Grupo (ej: Acompañamiento)"
+                    value={comboItemGroup}
+                    onChangeText={setComboItemGroup}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: THEME_COLOR,
+                    padding: 10,
+                    borderRadius: 8,
+                    alignItems: 'center'
+                  }}
+                  onPress={() => {
+                    if (!selectedComboProduct && !comboItemGroup) {
+                      return Alert.alert("Atención", "Selecciona un producto o escribe un grupo/opción.");
+                    }
+                    const newComboItem = {
+                      product: selectedComboProduct ? selectedComboProduct.id : null,
+                      product_name: selectedComboProduct ? selectedComboProduct.name : comboItemGroup,
+                      quantity: parseInt(comboItemQty) || 1,
+                      group_name: comboItemGroup,
+                      allow_modifiers: true
+                    };
+                    setComboItems([...comboItems, newComboItem]);
+                    setSelectedComboProduct(null);
+                    setComboItemQty('1');
+                    setComboItemGroup('');
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>+ Añadir al Paquete</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* VARIANTES */}
             <Text style={styles.labelSection}>Variantes (Formatos / Tamaños)</Text>
