@@ -220,10 +220,33 @@ const CommerceOrderDetailScreen = ({ route, navigation }) => {
               );
             })}
 
-            {/* Total */}
-            <View style={styles.totalContainer}>
-              <Text style={styles.totalLabel}>Total del Pedido</Text>
-              <Text style={styles.totalValue}>${order.final_total}</Text>
+            {/* Desglose Financiero y Ticket */}
+            <View style={styles.ticketSummaryContainer}>
+              <View style={styles.ticketRow}>
+                <Text style={styles.ticketLabel}>Subtotal de Productos:</Text>
+                <Text style={styles.ticketValue}>${parseFloat(order.products_total || 0).toFixed(2)}</Text>
+              </View>
+
+              {order.discount_amount && parseFloat(order.discount_amount) > 0 ? (
+                <View style={styles.ticketRow}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={[styles.ticketLabel, { color: '#E74C3C' }]}>
+                      Descuento Cupón ({order.coupon_code || 'PROMO'}):
+                    </Text>
+                    <Text style={{ fontSize: 11, color: order.coupon_details?.funded_by === 'platform' ? '#27AE60' : '#E74C3C', fontWeight: 'bold', marginTop: 2 }}>
+                      {order.coupon_details?.funded_by === 'platform' ? '✦ Financiado por ConectaLocal (No afecta tus ganancias)' : '• Descontado del Comercio'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.ticketValue, { color: '#E74C3C', fontWeight: 'bold' }]}>
+                    -${parseFloat(order.discount_amount).toFixed(2)}
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={styles.totalContainer}>
+                <Text style={styles.totalLabel}>Total Final del Pedido:</Text>
+                <Text style={styles.totalValue}>${parseFloat(order.final_total || 0).toFixed(2)}</Text>
+              </View>
             </View>
           </View>
 
@@ -311,12 +334,34 @@ const styles = StyleSheet.create({
   },
   noteText: { color: '#D35400', fontSize: 12, fontStyle: 'italic', flexShrink: 1 },
 
-  // Total
+  // Total y Ticket
+  ticketSummaryContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 10,
+    marginTop: 10,
+  },
+  ticketRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  ticketLabel: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '500',
+  },
+  ticketValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+  },
   totalContainer: {
-    borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 15, marginTop: 5,
+    borderTopWidth: 1, borderTopColor: '#ddd', paddingTop: 12, marginTop: 5,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
   },
-  totalLabel: { fontSize: 16, fontWeight: 'bold', color: '#555' },
+  totalLabel: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   totalValue: { fontSize: 20, fontWeight: 'bold', color: THEME_COLOR },
 
   // Botones
