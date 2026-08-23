@@ -318,9 +318,9 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
             targetLat = activeComms[0].latitude;
             targetLon = activeComms[0].longitude;
           }
-        } else if (order.commerce) {
-          targetLat = parseFloat(order.commerce.latitude);
-          targetLon = parseFloat(order.commerce.longitude);
+        } else if (order.commerce?.latitude || order.commerce_latitude) {
+          targetLat = parseFloat(order.commerce?.latitude || order.commerce_latitude);
+          targetLon = parseFloat(order.commerce?.longitude || order.commerce_longitude);
         }
       } else if (order.status === 'in_progress') {
         // Fase 2: Ir al cliente / destinatario
@@ -365,11 +365,12 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   const handlePickUp = async () => {
     if (!order.is_mercado && !distanceToTarget) return;
 
-    // Geocerca: Debe estar a menos de x  metros del comercio (Límite ampliado de 10m a 25m)
-    if (!order.is_mercado && distanceToTarget > 30) {
+    // Geocerca: Debe estar a menos de x metros del comercio (Límite ampliado a 40m)
+    if (!order.is_mercado && distanceToTarget > 40) {
       Alert.alert("Aún estás lejos", `Debes estar en el comercio. Estás a ${Math.round(distanceToTarget)}m.`);
       return;
     }
+
 
     // Para pedidos del Mercado, validar que todos los productos estén marcados
     if (order.is_mercado) {
@@ -513,14 +514,19 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   const activeCommerces = filteredCommerces.length > 0 ? filteredCommerces : uniqueCommerces;
   const isPickupPhase = order.status === 'accepted';
 
+  const commLat = parseFloat(order.commerce?.latitude || order.commerce_latitude || 0);
+  const commLon = parseFloat(order.commerce?.longitude || order.commerce_longitude || 0);
+  const commName = order.commerce?.name || order.commerce_name || "Comercio";
+  const commAddress = order.commerce?.address || order.commerce_address || "Dirección del comercio no especificada";
+
   // Validar coordenadas antes de pintar mapa
-  if (isPickupPhase && !order.is_mercado && (!order.commerce?.latitude || !order.delivery_address?.latitude)) {
+  if (isPickupPhase && !order.is_mercado && (!commLat || !commLon)) {
     return <View style={styles.loader}><Text>Error: Faltan coordenadas del comercio en el pedido.</Text></View>;
   }
-  if (!isPickupPhase && !order.is_commerce_shipment && !order.delivery_address?.latitude) {
+  if (!isPickupPhase && !order.is_commerce_shipment && (!order.delivery_address?.latitude || !order.delivery_address?.longitude)) {
     return <View style={styles.loader}><Text>Error: Faltan coordenadas del cliente en el pedido.</Text></View>;
   }
-  if (!isPickupPhase && order.is_commerce_shipment && !order.shipment_destination_latitude) {
+  if (!isPickupPhase && order.is_commerce_shipment && (!order.shipment_destination_latitude || !order.shipment_destination_longitude)) {
     return <View style={styles.loader}><Text>Error: Faltan coordenadas del destino del envío.</Text></View>;
   }
   if (isPickupPhase && order.is_mercado && uniqueCommerces.length === 0) {
@@ -530,19 +536,19 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
   // Definir destino actual según fase
   const targetLoc = isPickupPhase
     ? (order.is_mercado && activeCommerces.length > 0
-      ? { latitude: activeCommerces[0].latitude, longitude: activeCommerces[0].longitude }
-      : { latitude: parseFloat(order.commerce.latitude), longitude: parseFloat(order.commerce.longitude) })
+      ? { latitude: parseFloat(activeCommerces[0].latitude), longitude: parseFloat(activeCommerces[0].longitude) }
+      : { latitude: commLat, longitude: commLon })
     : (order.is_commerce_shipment
       ? { latitude: parseFloat(order.shipment_destination_latitude), longitude: parseFloat(order.shipment_destination_longitude) }
-      : { latitude: parseFloat(order.delivery_address.latitude), longitude: parseFloat(order.delivery_address.longitude) });
+      : { latitude: parseFloat(order.delivery_address?.latitude || 0), longitude: parseFloat(order.delivery_address?.longitude || 0) });
 
   const targetName = isPickupPhase
-    ? (order.is_mercado ? "Tiendas del Mercado" : order.commerce.name)
-    : (order.is_commerce_shipment ? "Destinatario de Comercio" : order.customer_name);
+    ? (order.is_mercado ? "Tiendas del Mercado" : commName)
+    : (order.is_commerce_shipment ? "Destinatario de Comercio" : (order.customer_real_name || order.customer_name || "Cliente"));
 
   const targetAddress = isPickupPhase
-    ? (order.is_mercado ? `${activeCommerces.length} locales comerciales` : order.commerce.address)
-    : (order.is_commerce_shipment ? order.shipment_destination_text : order.delivery_address.address_string);
+    ? (order.is_mercado ? `${activeCommerces.length} locales comerciales` : commAddress)
+    : (order.is_commerce_shipment ? (order.shipment_destination_text || "Dirección de destino no especificada") : (order.delivery_address?.address_string || "Dirección no especificada"));
 
   return (
     <View style={styles.container}>
@@ -624,11 +630,11 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
         {/* Agarradera visual / Botón Toggle */}
         <TouchableOpacity onPress={() => setIsCollapsed(!isCollapsed)} style={styles.sheetHandleArea} activeOpacity={0.7}>
           <View style={styles.sheetHandle} />
-          <Ionicons 
-            name={isCollapsed ? "chevron-up" : "chevron-down"} 
-            size={18} 
-            color="#999" 
-            style={{ alignSelf: 'center', marginTop: 2, marginBottom: 2 }} 
+          <Ionicons
+            name={isCollapsed ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#999"
+            style={{ alignSelf: 'center', marginTop: 2, marginBottom: 2 }}
           />
         </TouchableOpacity>
 
@@ -699,262 +705,262 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
 
             <View style={styles.divider} />
 
-        {/* 2. Estadísticas y Herramientas */}
-        <View style={styles.statsRow}>
-          {/* Badge Distancia */}
-          <View style={styles.distBadge}>
-            <Ionicons name="location-sharp" size={16} color="#555" />
-            <Text style={styles.distText}>
-              {distanceToTarget
-                ? (distanceToTarget > 1000 ? `${(distanceToTarget / 1000).toFixed(1)} km` : `${Math.round(distanceToTarget)} m`)
-                : 'Calculando...'}
-            </Text>
-          </View>
-
-          {/* Botones Secundarios */}
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {/* Botón Avisar Llegada (Solo en entrega) */}
-            {!isPickupPhase && (
-              <TouchableOpacity style={[styles.secondaryBtn, { backgroundColor: '#FFF3E0' }]} onPress={handleNotifyArrival}>
-                <Ionicons name="notifications" size={20} color={WARNING_COLOR} />
-                <Text style={[styles.secondaryBtnText, { color: WARNING_COLOR }]}>Ya llegué</Text>
-              </TouchableOpacity>
-            )}
-            {/* Botón Llamar */}
-            <TouchableOpacity
-              style={[styles.secondaryBtn, { backgroundColor: '#F5F5F5' }]}
-              onPress={() => Linking.openURL(`tel:${order.customer_phone}`)}
-            >
-              <Ionicons name="call" size={20} color="#333" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Filtros en Cascada (Fase de Recogida - Mercado) */}
-        {order.is_mercado && isPickupPhase && (
-          <View style={styles.filterContainer}>
-            <Text style={styles.filterTitle}>Filtrar por Sección/Categoría:</Text>
-
-            {/* Fila de Secciones */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-              <TouchableOpacity
-                style={[styles.filterChip, !selectedSectionId && styles.filterChipActive]}
-                onPress={() => handleSelectSection(null)}
-              >
-                <Text style={[styles.filterChipText, !selectedSectionId && styles.filterChipTextActive]}>Todas</Text>
-              </TouchableOpacity>
-              {getSectionsInOrder(order.items).map((section) => (
-                <TouchableOpacity
-                  key={`sec-${section.id}`}
-                  style={[styles.filterChip, selectedSectionId === section.id && styles.filterChipActive]}
-                  onPress={() => handleSelectSection(section.id)}
-                >
-                  <Text style={[styles.filterChipText, selectedSectionId === section.id && styles.filterChipTextActive]}>
-                    {section.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Fila de Categorías (Sólo si hay una sección seleccionada) */}
-            {selectedSectionId && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterRow, { marginTop: 8 }]}>
-                <TouchableOpacity
-                  style={[styles.subFilterChip, !selectedCategoryId && styles.subFilterChipActive]}
-                  onPress={() => handleSelectCategory(null)}
-                >
-                  <Text style={[styles.subFilterChipText, !selectedCategoryId && styles.subFilterChipTextActive]}>
-                    Todo {getSectionsInOrder(order.items).find(s => s.id === selectedSectionId)?.name}
-                  </Text>
-                </TouchableOpacity>
-                {getCategoriesInOrder(order.items, selectedSectionId).map((cat) => (
-                  <TouchableOpacity
-                    key={`cat-${cat.id}`}
-                    style={[styles.subFilterChip, selectedCategoryId === cat.id && styles.subFilterChipActive]}
-                    onPress={() => handleSelectCategory(cat.id)}
-                  >
-                    <Text style={[styles.subFilterChipText, selectedCategoryId === cat.id && styles.subFilterChipTextActive]}>
-                      {cat.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        )}
-
-        {/* Checklist del Repartidor para Pedidos de Mercado en recogida */}
-        {order.is_mercado && isPickupPhase && (
-          <View style={styles.checklistContainer}>
-            <Text style={styles.checklistTitle}>Lista de Compras del Mercado ({filteredItems.length} items):</Text>
-            <ScrollView style={styles.checklistScroll} nestedScrollEnabled={true}>
-              {filteredItems.map((item) => {
-                const isPurchased = item.purchase_status === 'purchased';
-                const isUnavailable = item.purchase_status === 'unavailable';
-
-                return (
-                  <View key={item.id} style={styles.checklistItem}>
-                    <View style={styles.itemInfo}>
-                      <Text style={styles.itemName}>{item.product_name}</Text>
-                      <View style={styles.itemMetaRow}>
-                        <View style={[styles.commBadge, { backgroundColor: item.commerce_color || '#5D5FEF' }]}>
-                          <Text style={styles.commBadgeText}>{item.commerce_name || 'Mercado'}</Text>
-                        </View>
-                        <Text style={styles.itemQty}>
-                          Cant: {item.weight_purchased ? `${item.weight_purchased} kg` : item.quantity}
-                        </Text>
-                      </View>
-
-                      {/* Directiva de Guiado en español */}
-                      <Text style={styles.itemInstruction}>
-                        👉 Ve al mostrador de <Text style={{ fontWeight: 'bold' }}>{item.commerce_name || 'Mercado'}</Text> y solicita <Text style={{ fontWeight: 'bold' }}>{item.quantity} {item.product?.unit_type && item.product.unit_type !== 'unit' ? (item.product.unit_type === 'kg' ? 'kilo(s)' : item.product.unit_type === 'liter' ? 'litro(s)' : item.product.unit_type) : 'pza(s)'}</Text> de <Text style={{ fontWeight: 'bold' }}>{item.product_name}</Text>.
-                      </Text>
-
-                      {item.selected_variant_name && (
-                        <Text style={{ fontSize: 12, color: '#555', marginTop: 2 }}>Tamaño/Var: {item.selected_variant_name}</Text>
-                      )}
-                      {item.selected_modifiers_json && item.selected_modifiers_json.length > 0 && (
-                        <Text style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
-                          Extras: {item.selected_modifiers_json.map(m => m.name).join(', ')}
-                        </Text>
-                      )}
-                      {item.customization_details ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', padding: 4, borderRadius: 4, marginTop: 4 }}>
-                          <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{ marginRight: 4 }} />
-                          <Text style={{ fontSize: 11, color: '#D35400', fontStyle: 'italic' }}>{item.customization_details}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-
-                    <View style={styles.itemActions}>
-                      <TouchableOpacity
-                        style={[
-                          styles.actionBtn,
-                          styles.checkBtn,
-                          isPurchased && styles.checkBtnActive
-                        ]}
-                        onPress={() => handleUpdateItemStatus(item.id, isPurchased ? 'pending' : 'purchased')}
-                      >
-                        <Ionicons
-                          name={isPurchased ? "checkmark-circle" : "checkmark-circle-outline"}
-                          size={22}
-                          color={isPurchased ? "#fff" : "#2ECC71"}
-                        />
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.actionBtn,
-                          styles.closeBtn,
-                          isUnavailable && styles.closeBtnActive
-                        ]}
-                        onPress={() => handleUpdateItemStatus(item.id, isUnavailable ? 'pending' : 'unavailable')}
-                      >
-                        <Ionicons
-                          name={isUnavailable ? "close" : "close-circle-outline"}
-                          size={22}
-                          color={isUnavailable ? "#fff" : "#E74C3C"}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* 3. Detalle de Productos (Para pedidos normales, o en fase de entrega para todos) */}
-        {(!order.is_mercado || !isPickupPhase) && (
-          <View style={styles.productsContainer}>
-            <Text style={styles.productsTitle}>
-              {order.is_commerce_shipment ? "Paquete / Detalles del Envío:" : "Productos a entregar:"}
-            </Text>
-            <ScrollView style={styles.productsScroll} nestedScrollEnabled={true}>
-              {order.is_commerce_shipment ? (
-                <View style={styles.productItem}>
-                  <View style={styles.productMainInfo}>
-                    <Ionicons name="cube-outline" size={20} color={THEME_COLOR} style={{ marginRight: 10 }} />
-                    <View style={styles.productTextContainer}>
-                      <Text style={styles.productNameText}>{order.special_instructions || "Envío de Paquete"}</Text>
-                      <Text style={styles.productVariantText}>Indicaciones especiales del comercio</Text>
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                order.items && order.items.map((item) => (
-                  <View key={item.id} style={styles.productItem}>
-                    <View style={styles.productMainInfo}>
-                      <Text style={styles.productQtyText}>
-                        {item.weight_purchased ? `${item.weight_purchased} kg` : `${parseInt(item.quantity)} pza(s)`}
-                      </Text>
-                      <View style={styles.productTextContainer}>
-                        <Text style={styles.productNameText}>{item.product_name}</Text>
-                        {item.selected_variant_name && (
-                          <Text style={styles.productVariantText}>Var: {item.selected_variant_name}</Text>
-                        )}
-                        {item.selected_modifiers_json && item.selected_modifiers_json.length > 0 && (
-                          <Text style={styles.productModifiersText}>
-                            Mod: {item.selected_modifiers_json.map(m => m.name).join(', ')}
-                          </Text>
-                        )}
-                        {item.customization_details ? (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', padding: 4, borderRadius: 4, marginTop: 4 }}>
-                            <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{ marginRight: 4 }} />
-                            <Text style={{ fontSize: 11, color: '#D35400', fontStyle: 'italic' }}>{item.customization_details}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-                    <Text style={styles.productPriceText}>${parseFloat(item.price_at_purchase || 0).toFixed(2)}</Text>
-                  </View>
-                ))
-              )}
-              {order.special_instructions && !order.is_commerce_shipment ? (
-                <View style={{ backgroundColor: '#FDF2E9', padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: '#F5CBA7' }}>
-                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#A04000' }}>Instrucciones generales del cliente:</Text>
-                  <Text style={{ fontSize: 12, color: '#D35400', marginTop: 2 }}>{order.special_instructions}</Text>
-                </View>
-              ) : null}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* 4. Botón de Acción Principal (Gigante) */}
-        <View style={styles.actionArea}>
-          {isPickupPhase ? (
-            <TouchableOpacity
-              style={[
-                styles.mainButton,
-                { backgroundColor: THEME_COLOR },
-                (order.is_mercado && order.items?.some(item => item.purchase_status === 'pending')) && styles.disabledButton
-              ]}
-              onPress={handlePickUp}
-              activeOpacity={0.8}
-              disabled={order.is_mercado && order.items?.some(item => item.purchase_status === 'pending')}
-            >
-              <Text style={styles.mainButtonText}>MARCAR RECOLECTADO</Text>
-              {order.is_mercado && order.items?.some(item => item.purchase_status === 'pending') ? (
-                <Text style={styles.geofenceText}>Registra todos los productos primero</Text>
-              ) : (
-                (!distanceToTarget || distanceToTarget > 25) && !order.is_mercado && (
-                  <Text style={styles.geofenceText}>Acércate al local para activar (rango 25m)</Text>
-                )
-              )}
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.mainButton, { backgroundColor: SUCCESS_COLOR }]}
-              onPress={handleCompleteDelivery}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.mainButtonText}>COMPLETAR ENTREGA</Text>
-              <View style={styles.totalCollectBadge}>
-                <Text style={styles.totalCollectText}>Cobrar: ${order.final_total}</Text>
+            {/* 2. Estadísticas y Herramientas */}
+            <View style={styles.statsRow}>
+              {/* Badge Distancia */}
+              <View style={styles.distBadge}>
+                <Ionicons name="location-sharp" size={16} color="#555" />
+                <Text style={styles.distText}>
+                  {distanceToTarget
+                    ? (distanceToTarget > 1000 ? `${(distanceToTarget / 1000).toFixed(1)} km` : `${Math.round(distanceToTarget)} m`)
+                    : 'Calculando...'}
+                </Text>
               </View>
-            </TouchableOpacity>
-          )}
-        </View>
+
+              {/* Botones Secundarios */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {/* Botón Avisar Llegada (Solo en entrega) */}
+                {!isPickupPhase && (
+                  <TouchableOpacity style={[styles.secondaryBtn, { backgroundColor: '#FFF3E0' }]} onPress={handleNotifyArrival}>
+                    <Ionicons name="notifications" size={20} color={WARNING_COLOR} />
+                    <Text style={[styles.secondaryBtnText, { color: WARNING_COLOR }]}>Ya llegué</Text>
+                  </TouchableOpacity>
+                )}
+                {/* Botón Llamar */}
+                <TouchableOpacity
+                  style={[styles.secondaryBtn, { backgroundColor: '#F5F5F5' }]}
+                  onPress={() => Linking.openURL(`tel:${order.customer_phone}`)}
+                >
+                  <Ionicons name="call" size={20} color="#333" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Filtros en Cascada (Fase de Recogida - Mercado) */}
+            {order.is_mercado && isPickupPhase && (
+              <View style={styles.filterContainer}>
+                <Text style={styles.filterTitle}>Filtrar por Sección/Categoría:</Text>
+
+                {/* Fila de Secciones */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+                  <TouchableOpacity
+                    style={[styles.filterChip, !selectedSectionId && styles.filterChipActive]}
+                    onPress={() => handleSelectSection(null)}
+                  >
+                    <Text style={[styles.filterChipText, !selectedSectionId && styles.filterChipTextActive]}>Todas</Text>
+                  </TouchableOpacity>
+                  {getSectionsInOrder(order.items).map((section) => (
+                    <TouchableOpacity
+                      key={`sec-${section.id}`}
+                      style={[styles.filterChip, selectedSectionId === section.id && styles.filterChipActive]}
+                      onPress={() => handleSelectSection(section.id)}
+                    >
+                      <Text style={[styles.filterChipText, selectedSectionId === section.id && styles.filterChipTextActive]}>
+                        {section.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Fila de Categorías (Sólo si hay una sección seleccionada) */}
+                {selectedSectionId && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterRow, { marginTop: 8 }]}>
+                    <TouchableOpacity
+                      style={[styles.subFilterChip, !selectedCategoryId && styles.subFilterChipActive]}
+                      onPress={() => handleSelectCategory(null)}
+                    >
+                      <Text style={[styles.subFilterChipText, !selectedCategoryId && styles.subFilterChipTextActive]}>
+                        Todo {getSectionsInOrder(order.items).find(s => s.id === selectedSectionId)?.name}
+                      </Text>
+                    </TouchableOpacity>
+                    {getCategoriesInOrder(order.items, selectedSectionId).map((cat) => (
+                      <TouchableOpacity
+                        key={`cat-${cat.id}`}
+                        style={[styles.subFilterChip, selectedCategoryId === cat.id && styles.subFilterChipActive]}
+                        onPress={() => handleSelectCategory(cat.id)}
+                      >
+                        <Text style={[styles.subFilterChipText, selectedCategoryId === cat.id && styles.subFilterChipTextActive]}>
+                          {cat.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
+
+            {/* Checklist del Repartidor para Pedidos de Mercado en recogida */}
+            {order.is_mercado && isPickupPhase && (
+              <View style={styles.checklistContainer}>
+                <Text style={styles.checklistTitle}>Lista de Compras del Mercado ({filteredItems.length} items):</Text>
+                <ScrollView style={styles.checklistScroll} nestedScrollEnabled={true}>
+                  {filteredItems.map((item) => {
+                    const isPurchased = item.purchase_status === 'purchased';
+                    const isUnavailable = item.purchase_status === 'unavailable';
+
+                    return (
+                      <View key={item.id} style={styles.checklistItem}>
+                        <View style={styles.itemInfo}>
+                          <Text style={styles.itemName}>{item.product_name}</Text>
+                          <View style={styles.itemMetaRow}>
+                            <View style={[styles.commBadge, { backgroundColor: item.commerce_color || '#5D5FEF' }]}>
+                              <Text style={styles.commBadgeText}>{item.commerce_name || 'Mercado'}</Text>
+                            </View>
+                            <Text style={styles.itemQty}>
+                              Cant: {item.weight_purchased ? `${item.weight_purchased} kg` : item.quantity}
+                            </Text>
+                          </View>
+
+                          {/* Directiva de Guiado en español */}
+                          <Text style={styles.itemInstruction}>
+                            👉 Ve al mostrador de <Text style={{ fontWeight: 'bold' }}>{item.commerce_name || 'Mercado'}</Text> y solicita <Text style={{ fontWeight: 'bold' }}>{item.quantity} {item.product?.unit_type && item.product.unit_type !== 'unit' ? (item.product.unit_type === 'kg' ? 'kilo(s)' : item.product.unit_type === 'liter' ? 'litro(s)' : item.product.unit_type) : 'pza(s)'}</Text> de <Text style={{ fontWeight: 'bold' }}>{item.product_name}</Text>.
+                          </Text>
+
+                          {item.selected_variant_name && (
+                            <Text style={{ fontSize: 12, color: '#555', marginTop: 2 }}>Tamaño/Var: {item.selected_variant_name}</Text>
+                          )}
+                          {item.selected_modifiers_json && item.selected_modifiers_json.length > 0 && (
+                            <Text style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                              Extras: {item.selected_modifiers_json.map(m => m.name).join(', ')}
+                            </Text>
+                          )}
+                          {item.customization_details ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', padding: 4, borderRadius: 4, marginTop: 4 }}>
+                              <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{ marginRight: 4 }} />
+                              <Text style={{ fontSize: 11, color: '#D35400', fontStyle: 'italic' }}>{item.customization_details}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <View style={styles.itemActions}>
+                          <TouchableOpacity
+                            style={[
+                              styles.actionBtn,
+                              styles.checkBtn,
+                              isPurchased && styles.checkBtnActive
+                            ]}
+                            onPress={() => handleUpdateItemStatus(item.id, isPurchased ? 'pending' : 'purchased')}
+                          >
+                            <Ionicons
+                              name={isPurchased ? "checkmark-circle" : "checkmark-circle-outline"}
+                              size={22}
+                              color={isPurchased ? "#fff" : "#2ECC71"}
+                            />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[
+                              styles.actionBtn,
+                              styles.closeBtn,
+                              isUnavailable && styles.closeBtnActive
+                            ]}
+                            onPress={() => handleUpdateItemStatus(item.id, isUnavailable ? 'pending' : 'unavailable')}
+                          >
+                            <Ionicons
+                              name={isUnavailable ? "close" : "close-circle-outline"}
+                              size={22}
+                              color={isUnavailable ? "#fff" : "#E74C3C"}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* 3. Detalle de Productos (Para pedidos normales, o en fase de entrega para todos) */}
+            {(!order.is_mercado || !isPickupPhase) && (
+              <View style={styles.productsContainer}>
+                <Text style={styles.productsTitle}>
+                  {order.is_commerce_shipment ? "Paquete / Detalles del Envío:" : "Productos a entregar:"}
+                </Text>
+                <ScrollView style={styles.productsScroll} nestedScrollEnabled={true}>
+                  {order.is_commerce_shipment ? (
+                    <View style={styles.productItem}>
+                      <View style={styles.productMainInfo}>
+                        <Ionicons name="cube-outline" size={20} color={THEME_COLOR} style={{ marginRight: 10 }} />
+                        <View style={styles.productTextContainer}>
+                          <Text style={styles.productNameText}>{order.special_instructions || "Envío de Paquete"}</Text>
+                          <Text style={styles.productVariantText}>Indicaciones especiales del comercio</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : (
+                    order.items && order.items.map((item) => (
+                      <View key={item.id} style={styles.productItem}>
+                        <View style={styles.productMainInfo}>
+                          <Text style={styles.productQtyText}>
+                            {item.weight_purchased ? `${item.weight_purchased} kg` : `${parseInt(item.quantity)} pza(s)`}
+                          </Text>
+                          <View style={styles.productTextContainer}>
+                            <Text style={styles.productNameText}>{item.product_name}</Text>
+                            {item.selected_variant_name && (
+                              <Text style={styles.productVariantText}>Var: {item.selected_variant_name}</Text>
+                            )}
+                            {item.selected_modifiers_json && item.selected_modifiers_json.length > 0 && (
+                              <Text style={styles.productModifiersText}>
+                                Mod: {item.selected_modifiers_json.map(m => m.name).join(', ')}
+                              </Text>
+                            )}
+                            {item.customization_details ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', padding: 4, borderRadius: 4, marginTop: 4 }}>
+                                <Ionicons name="chatbox-ellipses-outline" size={12} color="#D35400" style={{ marginRight: 4 }} />
+                                <Text style={{ fontSize: 11, color: '#D35400', fontStyle: 'italic' }}>{item.customization_details}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+                        <Text style={styles.productPriceText}>${parseFloat(item.price_at_purchase || 0).toFixed(2)}</Text>
+                      </View>
+                    ))
+                  )}
+                  {order.special_instructions && !order.is_commerce_shipment ? (
+                    <View style={{ backgroundColor: '#FDF2E9', padding: 8, borderRadius: 6, marginTop: 8, borderWidth: 1, borderColor: '#F5CBA7' }}>
+                      <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#A04000' }}>Instrucciones generales del cliente:</Text>
+                      <Text style={{ fontSize: 12, color: '#D35400', marginTop: 2 }}>{order.special_instructions}</Text>
+                    </View>
+                  ) : null}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* 4. Botón de Acción Principal (Gigante) */}
+            <View style={styles.actionArea}>
+              {isPickupPhase ? (
+                <TouchableOpacity
+                  style={[
+                    styles.mainButton,
+                    { backgroundColor: THEME_COLOR },
+                    (order.is_mercado && order.items?.some(item => item.purchase_status === 'pending')) && styles.disabledButton
+                  ]}
+                  onPress={handlePickUp}
+                  activeOpacity={0.8}
+                  disabled={order.is_mercado && order.items?.some(item => item.purchase_status === 'pending')}
+                >
+                  <Text style={styles.mainButtonText}>MARCAR RECOLECTADO</Text>
+                  {order.is_mercado && order.items?.some(item => item.purchase_status === 'pending') ? (
+                    <Text style={styles.geofenceText}>Registra todos los productos primero</Text>
+                  ) : (
+                    (!distanceToTarget || distanceToTarget > 40) && !order.is_mercado && (
+                      <Text style={styles.geofenceText}>Acércate al local para activar (rango 40m)</Text>
+                    )
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.mainButton, { backgroundColor: SUCCESS_COLOR }]}
+                  onPress={handleCompleteDelivery}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.mainButtonText}>COMPLETAR ENTREGA</Text>
+                  <View style={styles.totalCollectBadge}>
+                    <Text style={styles.totalCollectText}>Cobrar: ${order.final_total}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
           </>
         )}
       </View>
