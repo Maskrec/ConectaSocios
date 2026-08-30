@@ -316,6 +316,10 @@ const ProfileScreen = () => {
             <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
+        <Text style={{ textAlign: 'center', color: '#999', fontSize: 12, marginTop: 15 }}>
+          Conecta Socios v2.2.9
+        </Text>
+
         <View style={{height: 40}} />
       </ScrollView>
 
