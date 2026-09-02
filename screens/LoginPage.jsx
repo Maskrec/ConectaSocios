@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native'; 
 import apiClient from '../api';
-import { signInWithGoogleFirebase, signInWithFacebookFirebase } from '../services/FirebaseAuthService';
+import { signInWithGoogleFirebase, signInWithFacebookFirebase, checkGoogleRedirectResult } from '../services/FirebaseAuthService';
 
 const WHATSAPP_NUMBER = '524463168380'; // Número de WhatsApp del soporte (con código de país)
 
@@ -30,6 +30,23 @@ const LoginPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetStep, setResetStep] = useState(1);
   const navigation = useNavigation();
+
+  useEffect(() => {
+    const handleRedirect = async () => {
+      const redirectRes = await checkGoogleRedirectResult();
+      if (redirectRes && redirectRes.success) {
+        setIsLoading(true);
+        const loginRes = await loginWithSocialFirebase(redirectRes.idToken);
+        if (loginRes.error === 'account_inactive') {
+          setShowInactiveModal(true);
+        } else if (loginRes.error) {
+          Alert.alert("Error", loginRes.error);
+        }
+        setIsLoading(false);
+      }
+    };
+    handleRedirect();
+  }, []);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);

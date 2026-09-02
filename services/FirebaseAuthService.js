@@ -4,7 +4,8 @@ import {
   signInWithPopup, 
   signInWithRedirect,
   getRedirectResult,
-  GoogleAuthProvider 
+  GoogleAuthProvider,
+  FacebookAuthProvider 
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -41,6 +42,32 @@ export async function signInWithGoogleFirebase() {
   } catch (error) {
     console.error('❌ Error en Google Auth:', error);
     return { success: false, error: error.message || 'Error en inicio de sesión con Google' };
+  }
+}
+
+export async function signInWithFacebookFirebase() {
+  try {
+    const provider = new FacebookAuthProvider();
+    let result;
+    try {
+      result = await signInWithPopup(auth, provider);
+    } catch (popupErr) {
+      if (
+        popupErr.code === 'auth/popup-blocked' ||
+        popupErr.code === 'auth/cancelled-popup-request' ||
+        popupErr.message?.includes('Cross-Origin-Opener-Policy')
+      ) {
+        console.warn('⚠️ Ventana emergente bloqueada por el navegador o política COOP. Intentando con redirección...');
+        await signInWithRedirect(auth, provider);
+        return { pendingRedirect: true };
+      }
+      throw popupErr;
+    }
+    const idToken = await result.user.getIdToken();
+    return { success: true, idToken, user: result.user };
+  } catch (error) {
+    console.error('❌ Error en Facebook Auth:', error);
+    return { success: false, error: error.message || 'Error en inicio de sesión con Facebook' };
   }
 }
 

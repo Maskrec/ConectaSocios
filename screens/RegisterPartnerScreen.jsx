@@ -10,7 +10,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import Alert from '../components/AlertPolyfill';
 import { useAuth } from '../context/AuthContext';
-import { signInWithGoogleFirebase, signInWithFacebookFirebase } from '../services/FirebaseAuthService';
+import { signInWithGoogleFirebase, signInWithFacebookFirebase, checkGoogleRedirectResult } from '../services/FirebaseAuthService';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const WHATSAPP_NUMBER = '524463168380'; // Número de WhatsApp del administrador (con código de país)
@@ -32,6 +32,34 @@ const RegisterPartnerScreen = () => {
     commerce_name: '', vehicle_type: 'moto',
     car_brand: '', car_model: '', license_plate: '', is_taxi_driver: false
   });
+
+  useEffect(() => {
+    const handleRedirect = async () => {
+      const redirectRes = await checkGoogleRedirectResult();
+      if (redirectRes && redirectRes.success) {
+        setLoading(true);
+        const extraData = {
+          role,
+          category_id: role === 'owner' ? selectedCategory?.id : null,
+          commerce_name: formData.commerce_name,
+          phone_number: formData.phone_number,
+          vehicle_type: formData.vehicle_type,
+          car_brand: formData.car_brand,
+          car_model: formData.car_model,
+          license_plate: formData.license_plate,
+          is_taxi_driver: formData.is_taxi_driver
+        };
+        const loginRes = await loginWithSocialFirebase(redirectRes.idToken, extraData);
+        if (loginRes.error === 'account_inactive') {
+          setShowVerificationModal(true);
+        } else if (loginRes.error) {
+          Alert.alert("Error", loginRes.error);
+        }
+        setLoading(false);
+      }
+    };
+    handleRedirect();
+  }, []);
 
   const handleGoogleRegister = async () => {
     if (!acceptedTerms) {
