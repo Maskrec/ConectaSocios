@@ -61,6 +61,10 @@ const AddProductScreen = ({ navigation }) => {
   const [newModifierName, setNewModifierName] = useState('');
   const [newModifierPrice, setNewModifierPrice] = useState('');
 
+  // Estados de Mercado
+  const [mercadoCategories, setMercadoCategories] = useState([]);
+  const [selectedMercadoCategory, setSelectedMercadoCategory] = useState(null);
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -73,8 +77,23 @@ const AddProductScreen = ({ navigation }) => {
         console.error(e);
       }
     };
+
+    const fetchMercadoCategories = async () => {
+      if (user?.approved_for_mercado) {
+        try {
+          const res = await apiClient.get('/mi-comercio/mercado-categorias/');
+          if (res.data && res.data.categories) {
+            setMercadoCategories(res.data.categories);
+          }
+        } catch (e) {
+          console.error("Error al obtener categorías de mercado:", e);
+        }
+      }
+    };
+
     fetchProducts();
-  }, []);
+    fetchMercadoCategories();
+  }, [user]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -104,10 +123,14 @@ const AddProductScreen = ({ navigation }) => {
       if (maxWeight) formData.append('max_weight_kg', maxWeight);
     }
 
-    // Enviamos el valor del Switch
+    // Enviamos el valor del Switch y Ubicación
     formData.append('is_customizable', isCustomizable);
     formData.append('is_combo', isCombo);
-    formData.append('sale_location', saleLocation);
+    formData.append('sale_location', user?.approved_for_mercado ? saleLocation : 'feed');
+
+    if (user?.approved_for_mercado && saleLocation !== 'feed' && selectedMercadoCategory) {
+      formData.append('mercado_category', selectedMercadoCategory);
+    }
 
     // Variantes, modificadores y combos
     formData.append('variant_group_name', variantGroupName);
@@ -257,6 +280,42 @@ const AddProductScreen = ({ navigation }) => {
                     <Text style={[styles.unitBtnText, saleLocation === 'both' && styles.unitBtnTextActive]}>Ambos</Text>
                   </TouchableOpacity>
                 </View>
+
+                {saleLocation !== 'feed' && (
+                  <>
+                    <Text style={[styles.label, { marginTop: 10 }]}>Categoría Interna de Mercado</Text>
+                    {mercadoCategories.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
+                        {mercadoCategories.map((cat) => {
+                          const isSelected = selectedMercadoCategory === cat.id;
+                          return (
+                            <TouchableOpacity
+                              key={cat.id}
+                              style={{
+                                backgroundColor: isSelected ? THEME_COLOR : '#fff',
+                                borderWidth: 1,
+                                borderColor: isSelected ? THEME_COLOR : '#DDD',
+                                paddingHorizontal: 14,
+                                paddingVertical: 8,
+                                borderRadius: 20,
+                                marginRight: 8,
+                              }}
+                              onPress={() => setSelectedMercadoCategory(cat.id)}
+                            >
+                              <Text style={{ color: isSelected ? '#fff' : '#444', fontSize: 12, fontWeight: 'bold' }}>
+                                {cat.section?.name ? `${cat.section.name} -> ` : ''}{cat.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    ) : (
+                      <Text style={{ fontSize: 12, color: '#888', fontStyle: 'italic', marginBottom: 15 }}>
+                        Cargando categorías de mercado disponibles...
+                      </Text>
+                    )}
+                  </>
+                )}
               </>
             ) : null}
 

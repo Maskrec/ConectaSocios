@@ -9,7 +9,8 @@ import {
   StatusBar,
   RefreshControl,
   Modal,
-  ScrollView
+  ScrollView,
+  Linking
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext'; // <--- IMPORTANTE: Para obtener la deuda del usuario
@@ -98,6 +99,23 @@ const AvailableOrdersScreen = () => {
         return;
     }
 
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (targetOrder && targetOrder.is_guest) {
+      Alert.alert(
+        "⚠️ Pedido de Usuario Invitado",
+        "Por seguridad, revisa atentamente la dirección de entrega antes de aceptar. Es OBLIGATORIO realizar una llamada al número del cliente para confirmar el pedido.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Revisé y Acepto", onPress: () => processAcceptOrder(orderId) }
+        ]
+      );
+      return;
+    }
+
+    await processAcceptOrder(orderId);
+  };
+
+  const processAcceptOrder = async (orderId) => {
     setAcceptingOrderId(orderId); // Lock: Marcar que estamos procesando esta orden
     
     try {
@@ -111,10 +129,6 @@ const AvailableOrdersScreen = () => {
         setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
       }
     } catch (error) {
-      // Errores comunes:
-      // 409: Conflicto - Alguien más ya aceptó la orden
-      // 404: No encontrada - La orden ya no existe
-      // 400: Bad request - Validación fallida
       if (error.response?.status === 409) {
         Alert.alert('¡Ups!', 'Este pedido ya fue tomado por otro repartidor. Se actualizarán los pedidos disponibles.');
       } else if (error.response?.status === 404) {
@@ -123,7 +137,6 @@ const AvailableOrdersScreen = () => {
         Alert.alert('Error', error.response?.data?.detail || 'No se pudo aceptar el pedido. Intenta nuevamente.');
       }
       
-      // Re-fetch pedidos para sincronizar estado con servidor
       await fetchAvailableOrders();
     } finally {
       setAcceptingOrderId(null); // Unlock: Permitir procesar otra orden
@@ -233,19 +246,37 @@ const AvailableOrdersScreen = () => {
         <View style={styles.divider} />
 
         <View style={styles.cardBody}>
+            {/* Tag de advertencia si es Invitado */}
+            {item.is_guest && (
+              <View style={{ backgroundColor: '#FDEDEC', borderColor: '#E74C3C', borderWidth: 1, borderRadius: 8, padding: 8, marginBottom: 10 }}>
+                <Text style={{ color: '#C0392B', fontWeight: 'bold', fontSize: 11 }}>
+                  ⚠️ USUARIO INVITADO - OBLIGATORIO LLAMAR AL CLIENTE
+                </Text>
+              </View>
+            )}
+
             {/* Información del Cliente */}
             <View style={styles.clientBox}>
               <View style={styles.clientRow}>
                 <Ionicons name="person-circle-outline" size={16} color={THEME_COLOR} style={{ marginRight: 6 }} />
                 <Text style={styles.clientNameText} numberOfLines={1}>
-                  {item.customer_real_name || item.customer_name || 'Cliente'}
-                  {(item.customer_username || item.customer_name) ? <Text style={styles.clientUserText}> (@{item.customer_username || item.customer_name})</Text> : null}
+                  {item.customer_real_name || item.customer_name || item.guest_name || 'Cliente Invitado'}
+                  {item.is_guest ? <Text style={{ color: '#E67E22', fontWeight: 'bold' }}> (Invitado)</Text> : ((item.customer_username || item.customer_name) ? <Text style={styles.clientUserText}> (@{item.customer_username || item.customer_name})</Text> : null)}
                 </Text>
               </View>
-              {item.customer_phone ? (
-                <View style={[styles.clientRow, { marginTop: 2 }]}>
-                  <Ionicons name="call-outline" size={13} color="#666" style={{ marginRight: 6 }} />
-                  <Text style={styles.clientPhoneText}>{item.customer_phone}</Text>
+              {(item.customer_phone || item.guest_phone) ? (
+                <View style={[styles.clientRow, { marginTop: 4, justifyContent: 'space-between', alignItems: 'center' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="call-outline" size={13} color="#666" style={{ marginRight: 6 }} />
+                    <Text style={styles.clientPhoneText}>{item.customer_phone || item.guest_phone}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#27AE60', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}
+                    onPress={() => Linking.openURL(`tel:${item.customer_phone || item.guest_phone}`)}
+                  >
+                    <Ionicons name="call" size={12} color="#fff" style={{ marginRight: 4 }} />
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>Llamar</Text>
+                  </TouchableOpacity>
                 </View>
               ) : null}
             </View>

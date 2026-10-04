@@ -64,6 +64,10 @@ const EditProductScreen = ({ route, navigation }) => {
   const [newModifierName, setNewModifierName] = useState('');
   const [newModifierPrice, setNewModifierPrice] = useState('');
 
+  // Estados de Mercado
+  const [mercadoCategories, setMercadoCategories] = useState([]);
+  const [selectedMercadoCategory, setSelectedMercadoCategory] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -91,6 +95,7 @@ const EditProductScreen = ({ route, navigation }) => {
         setIsCombo(p.is_combo || false);
         setComboItems(p.combo_items || []);
         setSaleLocation(p.sale_location || 'feed');
+        setSelectedMercadoCategory(p.mercado_category || null);
 
         const prodsList = Array.isArray(prodsRes.data) ? prodsRes.data : (prodsRes.data.results || []);
         setMyProducts(prodsList.filter(item => item.id !== parseInt(productId)));
@@ -99,6 +104,17 @@ const EditProductScreen = ({ route, navigation }) => {
         setModifierGroupName(p.modifier_group_name || 'Ingredientes Extra');
         setVariants(p.variants || []);
         setModifiers(p.modifiers || []);
+
+        if (user?.approved_for_mercado) {
+          try {
+            const catRes = await apiClient.get('/mi-comercio/mercado-categorias/');
+            if (catRes.data && catRes.data.categories) {
+              setMercadoCategories(catRes.data.categories);
+            }
+          } catch (catErr) {
+            console.error("Error al cargar categorías de mercado:", catErr);
+          }
+        }
       } catch (error) {
         Alert.alert("Error", "No se pudo cargar el producto.");
         navigation.goBack();
@@ -107,7 +123,7 @@ const EditProductScreen = ({ route, navigation }) => {
       }
     };
     fetchProduct();
-  }, [productId]);
+  }, [productId, user]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -126,7 +142,15 @@ const EditProductScreen = ({ route, navigation }) => {
     formData.append('is_available', isAvailable);
     formData.append('is_customizable', isCustomizable);
     formData.append('is_combo', isCombo);
-    formData.append('sale_location', saleLocation);
+    formData.append('sale_location', user?.approved_for_mercado ? saleLocation : 'feed');
+
+    if (user?.approved_for_mercado) {
+      if (saleLocation !== 'feed' && selectedMercadoCategory) {
+        formData.append('mercado_category', selectedMercadoCategory);
+      } else {
+        formData.append('mercado_category', '');
+      }
+    }
 
     formData.append('unit_type', unitType);
     
@@ -292,6 +316,42 @@ const EditProductScreen = ({ route, navigation }) => {
                     <Text style={[styles.unitBtnText, saleLocation === 'both' && styles.unitBtnTextActive]}>Ambos</Text>
                   </TouchableOpacity>
                 </View>
+
+                {saleLocation !== 'feed' && (
+                  <>
+                    <Text style={[styles.label, { marginTop: 10 }]}>Categoría Interna de Mercado</Text>
+                    {mercadoCategories.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
+                        {mercadoCategories.map((cat) => {
+                          const isSelected = selectedMercadoCategory === cat.id;
+                          return (
+                            <TouchableOpacity
+                              key={cat.id}
+                              style={{
+                                backgroundColor: isSelected ? THEME_COLOR : '#fff',
+                                borderWidth: 1,
+                                borderColor: isSelected ? THEME_COLOR : '#DDD',
+                                paddingHorizontal: 14,
+                                paddingVertical: 8,
+                                borderRadius: 20,
+                                marginRight: 8,
+                              }}
+                              onPress={() => setSelectedMercadoCategory(cat.id)}
+                            >
+                              <Text style={{ color: isSelected ? '#fff' : '#444', fontSize: 12, fontWeight: 'bold' }}>
+                                {cat.section?.name ? `${cat.section.name} -> ` : ''}{cat.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    ) : (
+                      <Text style={{ fontSize: 12, color: '#888', fontStyle: 'italic', marginBottom: 15 }}>
+                        Cargando categorías de mercado disponibles...
+                      </Text>
+                    )}
+                  </>
+                )}
               </>
             ) : null}
 

@@ -681,22 +681,32 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
             {/* Datos del Cliente */}
             {!order.is_commerce_shipment && (
               <View style={styles.clientDetailsContainer}>
+                {order.is_guest && (
+                  <View style={{ backgroundColor: '#FDEDEC', borderColor: '#E74C3C', borderWidth: 1, borderRadius: 8, padding: 6, marginBottom: 8 }}>
+                    <Text style={{ color: '#C0392B', fontWeight: 'bold', fontSize: 11 }}>
+                      ⚠️ CLIENTE INVITADO - REALIZA LLAMADA DE VERIFICACIÓN
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.clientDetailsRow}>
                   <Ionicons name="person-circle-outline" size={20} color={THEME_COLOR} style={{ marginRight: 6 }} />
                   <Text style={styles.clientNameText} numberOfLines={1}>
                     <Text style={{ fontWeight: 'bold', color: '#555' }}>Cliente: </Text>
-                    {order.customer_real_name || order.customer_name || 'Cliente'}
+                    {order.customer_real_name || order.customer_name || order.guest_name || 'Cliente Invitado'}
+                    {order.is_guest ? <Text style={{ color: '#E67E22', fontWeight: 'bold' }}> (Invitado)</Text> : null}
                   </Text>
-                  <Text style={styles.clientUsernameText} numberOfLines={1}>
-                    (@{order.customer_username || order.customer_name})
-                  </Text>
+                  {!order.is_guest && (
+                    <Text style={styles.clientUsernameText} numberOfLines={1}>
+                      (@{order.customer_username || order.customer_name})
+                    </Text>
+                  )}
                 </View>
-                {order.customer_phone && (
+                {(order.customer_phone || order.guest_phone) && (
                   <View style={styles.clientPhoneRow}>
                     <Ionicons name="phone-portrait-outline" size={14} color="#666" style={{ marginRight: 6 }} />
                     <Text style={styles.clientPhoneText}>
                       <Text style={{ fontWeight: 'bold', color: '#555' }}>Teléfono: </Text>
-                      {order.customer_phone}
+                      {order.customer_phone || order.guest_phone}
                     </Text>
                   </View>
                 )}
@@ -729,7 +739,7 @@ const DeliveryTrackingScreen = ({ route, navigation }) => {
                 {/* Botón Llamar */}
                 <TouchableOpacity
                   style={[styles.secondaryBtn, { backgroundColor: '#F5F5F5' }]}
-                  onPress={() => Linking.openURL(`tel:${order.customer_phone}`)}
+                  onPress={() => Linking.openURL(`tel:${order.customer_phone || order.guest_phone}`)}
                 >
                   <Ionicons name="call" size={20} color="#333" />
                 </TouchableOpacity>

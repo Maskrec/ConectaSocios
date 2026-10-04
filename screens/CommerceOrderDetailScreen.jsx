@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StatusBar,
-  Platform
+  Platform,
+  Linking
 } from 'react-native';
 import apiClient from '../api';
 import { Ionicons } from '@expo/vector-icons';
@@ -117,6 +118,15 @@ const CommerceOrderDetailScreen = ({ route, navigation }) => {
           {/* 2. DATOS DE LOGÍSTICA */}
           {/* 2. DATOS DE LOGÍSTICA */}
           <Text style={styles.sectionTitle}>Detalles del Cliente y Entrega</Text>
+
+          {order.is_guest && (
+            <View style={{ backgroundColor: '#FDEDEC', borderColor: '#E74C3C', borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 12 }}>
+              <Text style={{ color: '#C0392B', fontWeight: 'bold', fontSize: 12 }}>
+                ⚠️ PEDIDO DE USUARIO INVITADO - Llama al cliente antes de enviar
+              </Text>
+            </View>
+          )}
+
           <View style={styles.infoCard}>
             {/* Cliente */}
             <View style={styles.infoRow}>
@@ -126,17 +136,29 @@ const CommerceOrderDetailScreen = ({ route, navigation }) => {
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>Cliente</Text>
                 <Text style={styles.infoValue}>
-                  {order.customer_real_name || order.customer_name || 'Cliente'}
+                  {order.customer_real_name || order.customer_name || order.guest_name || 'Cliente Invitado'}
+                  {order.is_guest ? <Text style={{ color: '#E67E22', fontWeight: 'bold' }}> (Invitado)</Text> : null}
                 </Text>
-                <Text style={{ fontSize: 13, color: '#666', marginTop: 1 }}>
-                  Usuario: @{order.customer_username || order.customer_name || 'cliente'}
-                </Text>
-                {order.customer_phone ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                    <Ionicons name="call-outline" size={14} color={THEME_COLOR} style={{ marginRight: 4 }} />
-                    <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#333' }}>
-                      {order.customer_phone}
-                    </Text>
+                {!order.is_guest && (
+                  <Text style={{ fontSize: 13, color: '#666', marginTop: 1 }}>
+                    Usuario: @{order.customer_username || order.customer_name || 'cliente'}
+                  </Text>
+                )}
+                {(order.customer_phone || order.guest_phone) ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="call-outline" size={14} color={THEME_COLOR} style={{ marginRight: 4 }} />
+                      <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#333' }}>
+                        {order.customer_phone || order.guest_phone}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#27AE60', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 6, flexDirection: 'row', alignItems: 'center' }}
+                      onPress={() => Linking.openURL(`tel:${order.customer_phone || order.guest_phone}`)}
+                    >
+                      <Ionicons name="call" size={13} color="#fff" style={{ marginRight: 4 }} />
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Llamar</Text>
+                    </TouchableOpacity>
                   </View>
                 ) : null}
               </View>
